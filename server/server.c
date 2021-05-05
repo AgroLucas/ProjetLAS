@@ -19,8 +19,10 @@
 #include "../const.h"
 
 void requestHandler(void* arg1);
+int getFreeIdNumber();
 void executeProgram(int programId);
-void fillProgram(char* path, char* content);
+void fillProgram(char* path, char* content, int programId);
+
 
 int main(int argc, char **argv) {
 
@@ -52,11 +54,20 @@ void requestHandler(void* arg1) {
 		executeProgram(request.secondInt);
 		return;
 	}
+	int programId = request.firstInt;
+	if (programId == -1)
+		programId = getFreeIdNumber();
 	//TODO get content from new socket fd
 	char* content;
-	fillProgram(request.source, content);
+	fillProgram(request.source, content, programId);
 	return;
 }
+
+
+int getFreeIdNumber() {
+	return 0;
+}
+
 
 //should return Response and output
 void executeProgram(int programId) {
@@ -64,12 +75,8 @@ void executeProgram(int programId) {
 }
 
 
-void createPath(char* path) {
-
-}
-
 //should return Response
-void fillProgram(char* path, char* content) {
+void fillProgram(char* path, char* content, int programId) {
 	int fd = sopen(path, O_WRONLY | O_CREAT | O_TRUNC, 0744);
-	
+	swrite(fd, content, strlen(content)*sizeof(char));
 }
