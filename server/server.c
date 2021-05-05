@@ -5,6 +5,10 @@
 /* struct sockaddr_in */
 #include <netinet/in.h>
 #include <arpa/inet.h>
+/* Used for read write open */
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,7 +20,6 @@
 
 void requestHandler(void* arg1);
 void executeProgram(int programId);
-void createPath(char* path);
 void fillProgram(char* path, char* content);
 
 int main(int argc, char **argv) {
@@ -49,8 +52,6 @@ void requestHandler(void* arg1) {
 		executeProgram(request.secondInt);
 		return;
 	}
-	if (request.firstInt == -1)
-		createPath(request.source);
 	//TODO get content from new socket fd
 	char* content;
 	fillProgram(request.source, content);
@@ -69,5 +70,6 @@ void createPath(char* path) {
 
 //should return Response
 void fillProgram(char* path, char* content) {
-
+	int fd = sopen(path, O_WRONLY | O_CREAT | O_TRUNC, 0744);
+	
 }
