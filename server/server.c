@@ -79,4 +79,7 @@ void executeProgram(int programId) {
 void fillProgram(char* path, char* content, int programId) {
 	int fd = sopen(path, O_WRONLY | O_CREAT | O_TRUNC, 0744);
 	swrite(fd, content, strlen(content)*sizeof(char));
+	sexecl("/bin/gcc", "-o", path);
+	//WEXITSTATUS for errno
+	//DUP redirect stderr in file
 }
