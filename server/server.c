@@ -14,7 +14,10 @@
 #include "../utils_v10.h"
 #include "../const.h"
 
-int nbrProgs = 0;
+void requestHandler(void* arg1);
+void executeProgram(int programId);
+void createPath(char* path);
+void fillProgram(char* path, char* content);
 
 int main(int argc, char **argv) {
 
@@ -25,25 +28,46 @@ int main(int argc, char **argv) {
 	
 	int port = atoi(argv[1]);
 	
-	int sockfd = initSocketServer(port);
+	int sockFd = initSocketServer(port);
 	printf("Le serveur tourne sur le port : %i \n", port);
 
-	int newsockfd;
-	Request request;
+	int newSockFd;
 
 	while(true) {
-		if (nbrProgs >= MAX_RUNNING_PROGS) {
-			sleep(1);
-			continue;
-		}
-		newsockfd = saccept(sockfd);
-		nbrProgs++;
-		sread(newsockfd, &request, sizeof(request));
-		if (request.firstInt == -1)	{
-			//TODO ajouter/remplacer progs
-		} else {
-			//TODO executer
-		}
+		newSockFd = saccept(sockFd);
+		fork_and_run1(requestHandler, &newSockFd);
 	}
+}
 
-} 	
+
+void requestHandler(void* arg1) {
+	int* newSockFd = arg1;
+	Request request;
+
+	sread(*newSockFd, &request, sizeof(request));
+	if (request.firstInt == -2)	{
+		executeProgram(request.secondInt);
+		return;
+	}
+	if (request.firstInt == -1)
+		createPath(request.source);
+	//TODO get content from new socket fd
+	char* content;
+	fillProgram(request.source, content);
+	return;
+}
+
+//should return Response and output
+void executeProgram(int programId) {
+
+}
+
+
+void createPath(char* path) {
+
+}
+
+//should return Response
+void fillProgram(char* path, char* content) {
+
+}

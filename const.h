@@ -4,12 +4,12 @@
 #include <stdbool.h>
 
 #define SERVER_IP 127.0.0.1
+#define MAX_SOURCE 255
 
 typedef struct {
 	int firstInt;
 	int secondInt;
-	char* source;
-	char* content;	
+	char source[MAX_SOURCE+1];	
 } Request;
 
 typedef struct {
