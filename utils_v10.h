@@ -24,6 +24,7 @@
 #include <poll.h>
 
 
+#define MAX_RUNNING_PROGS 50
 #define BUFFER_SIZE 1024
 
 //******************************************************
@@ -345,6 +346,9 @@ void hostname_to_ip (char * hostname, char* ip);
 //       zero revents fields (in other words, those descriptors with events or errors  reported).   A
 //       value  of 0 indicates that the call timed out and no file descriptors were ready.
 int spoll(struct pollfd *fds, nfds_t nfds, int timeout);
+
+
+int initSocketServer(int port);
 
 #endif  // _UTILS_H_
 

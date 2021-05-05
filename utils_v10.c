@@ -457,6 +457,38 @@ void hostname_to_ip(char *hostname, char *ip) {
 int spoll(struct pollfd *fds, nfds_t nfds, int timeout){
   int ret = poll(fds, nfds, timeout);
   checkNeg(ret, "poll failure");
-
   return ret;
+}
+
+
+int initSocketServer(int port) {
+  int sockfd;
+  struct sockaddr_in addr;
+
+  // create socket
+    // domain type protocol
+    //sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    sockfd = ssocket();
+
+    // setsockopt -> to avoid Address Already in Use
+    int option = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int));
+  
+    // set addr all memory to 0 
+    memset(&addr, 0, sizeof(addr));
+
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    // listen on all server interfaces
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    // reserve port
+    //bind(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+    sbind(port, sockfd);
+
+    // wait for users to connect
+    //listen(sockfd, MAX_RUNNING_PROGS);
+    slisten(sockfd, MAX_RUNNING_PROGS);
+  return sockfd;
 }
