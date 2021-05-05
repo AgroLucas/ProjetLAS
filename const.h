@@ -1,12 +1,23 @@
 #ifndef _CONST_H_
 #define _CONST_H_
 
+#include <stdbool.h>
+
 #define SERVER_IP 127.0.0.1
-#define SERVER_PORT 5642
 
+typedef struct {
+	int firstInt;
+	int secondInt;
+	char* source;
+	char* content;	
+} Request;
 
-typedef struct Data {
-	//TODO
-} Data;
+typedef struct {
+	int id;
+	char* sourceName;
+	bool hasError;
+	int nbrExecution;
+	int nbrTotalMls;
+} Program;
 
 #endif
