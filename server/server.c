@@ -23,7 +23,7 @@
 
 void requestHandler(void* arg1);
 int getFreeIdNumber();
-void executeProgram(int programId);
+void executeProgram(int programId, int newSockFd);
 void fillProgram(char* path, int programId, int newSockFd);
 void compileHandler(void* arg1, void* arg2);
 
@@ -53,7 +53,7 @@ void requestHandler(void* arg1) {
 	Request request;
 	sread(*newSockFd, &request, sizeof(request));
 	if (request.firstInt == -2)	{
-		executeProgram(request.secondInt);
+		executeProgram(request.secondInt, *newSockFd);
 		return;
 	}
 	int programId = request.firstInt;
@@ -70,15 +70,28 @@ int getFreeIdNumber() {
 
 
 //should return Response and output
-void executeProgram(int programId) {
+void executeProgram(int programId, int newSockFd) {
 
+	//get program path
+
+	char stdout[BUFFER_SIZE];
+
+	ExecuteResponse executeResponse;
+	executeResponse.n = programId;
+	//TODO
+	executeResponse.programState = 0;
+	executeResponse.executionTime = 0;
+	executeResponse.exitCode = 0;
+	swrite(newSockFd, &executeResponse, sizeof(executeResponse));
+	swrite(newSockFd, stdout, strlen(stdout)*sizeof(char));
 }
 
 
 void fillProgram(char* path, int programId, int newSockFd) {
-	//open and fill file with content
+	//open or create file
 	int fd = sopen(path, O_WRONLY | O_CREAT | O_TRUNC, 0744);
 
+	//fill file with content
 	int sizeRead;
 	char content[BUFFER_SIZE];
 	do {
@@ -95,9 +108,23 @@ void fillProgram(char* path, int programId, int newSockFd) {
 
 	//read compile errors
 	sizeRead;
-	char errors[BUFFER_SIZE];
+	int size = BUFFER_SIZE;
+	char** errors;
+
+	if ((errors = (char**)malloc(size*sizeof(char*))) == NULL) {
+		perror("Allocation dynamique de errors impossible");
+		exit(1);
+	}
+
 	do {
-		sizeRead = sread(pipefd[0], errors, BUFFER_SIZE);
+		sizeRead = sread(pipefd[0], errors, size);
+		if (sizeRead == size) {
+			size*=2;
+			if ((errors = (char**)realloc(errors, size*sizeof(char*))) == NULL) {
+			    perror("Allocation dynamique de errors impossible");
+				return;
+			}
+		}
 	} while (sizeRead != 1);
 	sclose(pipefd[0]);
 
@@ -110,7 +137,7 @@ void fillProgram(char* path, int programId, int newSockFd) {
 	modificationResponse.exitCode = WEXITSTATUS(status);
 
 	swrite(newSockFd, &modificationResponse, sizeof(modificationResponse));
-	swrite(newSockFd, errors, strlen(errors)*sizeof(char));
+	swrite(newSockFd, errors, strlen(*errors)*sizeof(char));
 }
 
 
