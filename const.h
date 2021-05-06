@@ -7,6 +7,15 @@
 #define MAX_SOURCE 255
 
 
+typedef struct Programme {
+	int programmeID;
+	char* fichierSource;
+	bool hasError;
+	int nombreExcecutions;
+	int tempsExcecution;
+} Programm;
+
+
 typedef struct {
 	int firstInt;					//-1 if to add  numProg if to modify  -2 if to execute
 	int secondInt;					//path length if to add/modify  numProg if to execute
@@ -26,14 +35,5 @@ typedef struct {
 	int executionTime;
 	int exitCode;
 } ExecuteResponse;
-
-
-typedef struct {
-	int id;
-	char* sourceName;
-	bool hasError;
-	int nbrExecution;
-	int nbrTotalMls;
-} Program;
 
 #endif
