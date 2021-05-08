@@ -492,3 +492,29 @@ int initSocketServer(int port) {
     slisten(sockfd, MAX_RUNNING_PROGS);
   return sockfd;
 }
+
+
+void getStringFromInput(char** string, int inputFile) {
+  int sizeRead;
+  int logicalSize = 0;
+  int physicalSize = BUFFER_SIZE;
+
+  if ((*string = (char*)malloc(physicalSize*sizeof(char))) == NULL) {
+    perror("Allocation dynamique de string impossible");
+    exit(1);
+  }
+  do {
+    char buffer[BUFFER_SIZE];
+    sizeRead = sread(inputFile, buffer, BUFFER_SIZE);
+    if (physicalSize - sizeRead - logicalSize < 0) {
+      physicalSize *= 2;
+      if ((*string = (char*)realloc(*string, physicalSize*sizeof(char))) == NULL)
+        return perror("Allocation dynamique de string impossible");
+    }
+    if (sizeRead > 1) {
+      strcat(*string, buffer); 
+      if (buffer[sizeRead-1] == EOF) break;
+    }
+    logicalSize += sizeRead;
+  } while (sizeRead != 0);
+}

@@ -350,6 +350,9 @@ int spoll(struct pollfd *fds, nfds_t nfds, int timeout);
 
 int initSocketServer(int port);
 
+
+void getStringFromInput(char** tab, int inputFile);
+
 #endif  // _UTILS_H_
 
 

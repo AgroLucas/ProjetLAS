@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #define SERVER_IP 127.0.0.1
-#define MAX_SOURCE 255
+#define MAX_PROG_NAME 255
 
 
 typedef struct Programme {
@@ -19,7 +19,7 @@ typedef struct Programme {
 typedef struct {
 	int firstInt;					//-1 if to add  numProg if to modify  -2 if to execute
 	int secondInt;					//path length if to add/modify  numProg if to execute
-	char source[MAX_SOURCE+1];		//path length if to add/modify  null to execute
+	char name[MAX_PROG_NAME+1];		//prog name if to add/modify  null to execute
 } Request;
 
 

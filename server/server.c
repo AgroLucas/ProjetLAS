@@ -23,8 +23,12 @@
 
 void requestHandler(void* arg1);
 int getFreeIdNumber();
-void executeProgram(int programId, int newSockFd);
-void fillProgram(char* path, int programId, int newSockFd);
+
+void executeProgram(int programId, int clientSocket);
+
+void modifyProgram(char* path, int programId, int clientSocket);
+char* getPathName(int programId);
+void writeIntoFile(int clientSocket, int fd);
 void compileHandler(void* arg1, void* arg2);
 
 
@@ -48,19 +52,17 @@ int main(int argc, char **argv) {
 
 
 void requestHandler(void* arg1) {
-	int* newSockFd = arg1;
+	int* clientSocket = arg1;
 
 	Request request;
-	sread(*newSockFd, &request, sizeof(request));
-	if (request.firstInt == -2)	{
-		executeProgram(request.secondInt, *newSockFd);
-		return;
-	}
-	int programId = request.firstInt;
-	if (programId == -1)
-		programId = getFreeIdNumber();
+	sread(*clientSocket, &request, sizeof(request));
 
-	fillProgram(request.source, programId, *newSockFd);
+	if (request.firstInt == -2)	return executeProgram(request.secondInt, *clientSocket);
+	
+	int programId = request.firstInt;
+	if (programId == -1) programId = getFreeIdNumber();
+
+	modifyProgram(request.name, programId, *clientSocket);
 }
 
 //TODO return nbr of progs existing+1
@@ -70,7 +72,7 @@ int getFreeIdNumber() {
 
 
 //should return Response and output
-void executeProgram(int programId, int newSockFd) {
+void executeProgram(int programId, int clientSocket) {
 
 	//get program path
 
@@ -82,73 +84,76 @@ void executeProgram(int programId, int newSockFd) {
 	executeResponse.programState = 0;
 	executeResponse.executionTime = 0;
 	executeResponse.exitCode = 0;
-	swrite(newSockFd, &executeResponse, sizeof(executeResponse));
-	swrite(newSockFd, stdout, strlen(stdout)*sizeof(char));
+	swrite(clientSocket, &executeResponse, sizeof(executeResponse));
+	swrite(clientSocket, stdout, strlen(stdout)*sizeof(char));
 }
 
 
-void fillProgram(char* path, int programId, int newSockFd) {
-	//open or create file
+void modifyProgram(char* progName, int programId, int clientSocket) {
+
+	char* path = getPathName(programId);
 	int fd = sopen(path, O_WRONLY | O_CREAT | O_TRUNC, 0744);
 
-	//fill file with content
-	int sizeRead;
-	char content[BUFFER_SIZE];
-	do {
-		sizeRead = sread(newSockFd, content, BUFFER_SIZE);
-		swrite(fd, content, sizeRead*sizeof(char));
-	} while (sizeRead != 1);
-
-	int pipefd[2];
-	spipe(pipefd);
+	writeIntoFile(clientSocket, fd);	
 
 	//compile prog
-	int childId = fork_and_run2(compileHandler, path, pipefd);
+	int pipefd[2];
+	spipe(pipefd);
+	int childId = fork_and_run2(compileHandler, progName, pipefd);
 	sclose(pipefd[1]);
 
 	//read compile errors
-	sizeRead;
-	int size = BUFFER_SIZE;
-	char** errors;
+	char* errors;
+	getStringFromInput(&errors, pipefd[0]);
 
-	if ((errors = (char**)malloc(size*sizeof(char*))) == NULL) {
-		perror("Allocation dynamique de errors impossible");
-		exit(1);
-	}
-
-	do {
-		sizeRead = sread(pipefd[0], errors, size);
-		if (sizeRead == size) {
-			size*=2;
-			if ((errors = (char**)realloc(errors, size*sizeof(char*))) == NULL) {
-			    perror("Allocation dynamique de errors impossible");
-				return;
-			}
-		}
-	} while (sizeRead != 1);
 	sclose(pipefd[0]);
 
 	int status;
 	swaitpid(childId, &status, 0);
 
-	//send Response to client
+	
 	ModificationResponse modificationResponse;
 	modificationResponse.n = programId;
 	modificationResponse.exitCode = WEXITSTATUS(status);
 
-	swrite(newSockFd, &modificationResponse, sizeof(modificationResponse));
-	swrite(newSockFd, errors, strlen(*errors)*sizeof(char));
+	//send Response to client
+	swrite(clientSocket, &modificationResponse, sizeof(modificationResponse));
+	swrite(clientSocket, errors, strlen(errors)*sizeof(char));
+	//demander
+	//simulate CTRL + D
+	int c = EOF;
+	swrite(clientSocket, &c, sizeof(int));
+
+	free(errors);
+	sclose(clientSocket);
+}
+
+
+//TODO
+char* getPathName(int programId) {
+	return NULL;
+}
+
+
+void writeIntoFile(int clientSocket, int fd) {
+	int sizeRead;
+	char c;
+	do {
+		sizeRead = sread(clientSocket, &c, sizeof(char));
+		if (c != EOF)
+			swrite(fd, &c, sizeof(char));
+	} while (c != EOF);
 }
 
 
 void compileHandler(void* arg1, void* arg2) {
-	char* path = arg1;
+	char* progName = arg1;
 	int *pipefd = arg2;
 	sclose(pipefd[0]);
 
-	dup2(2, pipefd[1]);
-	sexecl("/bin/gcc", "gcc", CFLAGS, path, "-o", NULL);
-	swrite(pipefd[1], " ", sizeof(char));
+	dup2(pipefd[1], 2);
+
+	sexecl("/bin/gcc", "gcc", progName, NULL);
 
 	sclose(pipefd[1]);
 }
