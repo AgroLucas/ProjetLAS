@@ -494,6 +494,19 @@ int initSocketServer(int port) {
 }
 
 
+void overwriteFromInputIntoOutput(int input, char* outputPath) {
+  int fd = sopen(outputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
+  int sizeRead;
+  char c;
+  do {
+    sizeRead = sread(input, &c, sizeof(char));
+    if (c != EOF)
+      swrite(fd, &c, sizeof(char));
+  } while (c != EOF);
+  sclose(fd);
+}
+
+
 void getStringFromInput(char** string, int inputFile) {
   int sizeRead;
   int logicalSize = 0;
