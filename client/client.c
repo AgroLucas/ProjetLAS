@@ -9,48 +9,28 @@
 #define MAX_QUERY_ARG_LENGHT 128
 #define BUFF_SIZE 3*MAX_QUERY_ARG_LENGHT
 
-/**
-*PRE:	Child process "clock" and "recurrent exec" exist
-*POST: 	All child process are killed
-*RES: 	Exit code (failure if fail to kill children)
+/*
+*PRE: 	Children process are running.
+*POST: 	SIGUSR1 signal are send to both children, shuting them down.
+*RET:	Boolean (true = successful shutdown)
 */
 bool shutdownChildren();
 
 /**
-*PRE: 	-
-*POST:	A line is read on stdin (each entry in the returned array has to be freed)
-*RES:	Query as an array of strings (that were seperated with " " in the input on stdin)
+*PRE:	query is an array of char* (length = MAX_QUERY_ARGS)
+*POST:	A line is read on stdin. query is filled with char* (each entry in the query array has to be freed)
 */
 void readQuery(char**);
 
-/**
-*PRE:	The file referenced by filePath exists
-*POST:	The program has been stored on the server
-*/
 void addProg(const char*, int, char*);
-
-/**
-*PRE:	The file referenced by filePath exists
-*POST:	The program has been overwritten on the server
-*/
 void replaceProg(const char*, int, int, char*);
-
-/**
-*POST:	The program has been executed until completion,
-*		and its writes on stdout (server) has been displayed on stdout (client)
-*/
 void execProgOnce(const char*, int, int);
-
-/**
-*PRE:	Child process "clock" and "recurrent exec" exist
-*POST:	Program array updated in "recurrent exec" child
-*/
 void execProgReccur(int);
 
 //	=== main ===
 
 /*
-* Args:	ipAddr, port, delay (sec)
+*Expected arguments : IP_address, port, delay(sec)
 */
 int main(int argc, char const *argv[])
 {
@@ -113,7 +93,7 @@ void readQuery(char** query) {
 		perror("ERROR : can not read the file");
 		exit(EXIT_FAILURE);
 	}
-	char* token = strtok(buffRd, " ");
+	char* token = strtok(buffRd, " \n");
 	int i=0;
 	for(int i=0; i<MAX_QUERY_ARGS; i++) {
 		//malloc
@@ -121,7 +101,7 @@ void readQuery(char** query) {
 		if(token != NULL) {
 			strcpy(arg, token);
 			query[i] = arg;
-			token = strtok(NULL, " ");	
+			token = strtok(NULL, " \n");	
 		}else {
 			query[i] = arg;
 		}
@@ -129,12 +109,12 @@ void readQuery(char** query) {
 }
 
 void addProg(const char* addr, int port, char* filePath) {
-	printf("add prog %s\n", filePath);
+	printf("add prog '%s'\n", filePath);
 	//TODO
 }
 
 void replaceProg(const char* addr, int port, int progNum, char* filePath) {
-	printf("replace prog num. %d with %s\n", progNum, filePath);
+	printf("replace prog num. %d with '%s'\n", progNum, filePath);
 	//TODO
 }
 
