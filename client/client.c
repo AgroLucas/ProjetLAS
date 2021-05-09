@@ -19,7 +19,7 @@ bool shutdownChildren();
 /**
 *PRE: 	-
 *POST:	A line is read on stdin (each entry in the returned array has to be freed)
-*RES:	An array of strings (that were seperated with " " in the input on stdin)
+*RES:	Query as an array of strings (that were seperated with " " in the input on stdin)
 */
 char** readQuery();
 
@@ -91,7 +91,6 @@ int main(int argc, char const *argv[])
 			free(query[i]);
 		}
 	}
-
 	exit(shutdownChildren());
 }
 
@@ -106,10 +105,11 @@ char** readQuery() {
 	char* res[MAX_QUERY_ARGS];
 
 	char buffRd[BUFF_SIZE];
-
-	int nRd = sread(STDIN_FILENO, bufRd, BUFF_SIZE);
-	checkNeg(nRd, "erreur read stdin");
-
+	
+	if (sread(STDIN_FILENO, bufRd, BUFF_SIZE) == -1) {
+		perror("ERROR : can not read the file");
+		exit(EXIT_FAILURE);
+	}
 	char* token = strtok(buffRd, " ");
 	for(int i=0; i<MAX_QUERY_ARGS; i++) {
 		//malloc
