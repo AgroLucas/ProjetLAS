@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "utils_v10.h"
+#include "../utils_v10.h"
 
 #define MAX_QUERY_ARGS 3
 #define MAX_QUERY_ARG_LENGHT 128
@@ -21,25 +21,25 @@ bool shutdownChildren();
 *POST:	A line is read on stdin (each entry in the returned array has to be freed)
 *RES:	Query as an array of strings (that were seperated with " " in the input on stdin)
 */
-char** readQuery();
+void readQuery(char**);
 
 /**
 *PRE:	The file referenced by filePath exists
 *POST:	The program has been stored on the server
 */
-void addProg(char*, int, char*);
+void addProg(const char*, int, char*);
 
 /**
 *PRE:	The file referenced by filePath exists
 *POST:	The program has been overwritten on the server
 */
-void replaceProg(char*, int, int, char*);
+void replaceProg(const char*, int, int, char*);
 
 /**
 *POST:	The program has been executed until completion,
 *		and its writes on stdout (server) has been displayed on stdout (client)
 */
-void execProgOnce(char*, int, int);
+void execProgOnce(const char*, int, int);
 
 /**
 *PRE:	Child process "clock" and "recurrent exec" exist
@@ -49,13 +49,16 @@ void execProgReccur(int);
 
 //	=== main ===
 
+/*
+* Args:	ipAddr, port, delay (sec)
+*/
 int main(int argc, char const *argv[])
 {
 	if(argc != 4) {
 		perror("Nombre d'arguments invalide.");
 		exit(EXIT_FAILURE);
 	}
-	char* addr = argv[1];
+	const char* addr = argv[1];
 	int port = atoi(argv[2]);
 	int delay = atoi(argv[3]);
 
@@ -63,27 +66,30 @@ int main(int argc, char const *argv[])
 
 	bool quit = false;
 	while(!quit) {
-		char** query = readQuery();
+		char* query[MAX_QUERY_ARGS];
+		readQuery(query);
 		char queryType = query[0][0];
+		int progNum;
+		char* filePath;
 		switch(queryType) {
 			case 'q':
 				quit = true;
 				break;
 			case '+':
-				char* filePath = query[1];
+				filePath = query[1];
 				addProg(addr, port, filePath);
 				break;
 			case '.':
-				int progNum = atoi(query[1]);
-				char* filePath = query[2];
+				progNum = atoi(query[1]);
+				filePath = query[2];
 				replaceProg(addr, port, progNum, filePath);
 				break;
 			case '*':
-				int progNum = atoi(query[1]);
+				progNum = atoi(query[1]);
 				execProgReccur(progNum);
 				break;
 			case '@':
-				int progNum = atoi(query[1]);
+				progNum = atoi(query[1]);
 				execProgOnce(addr, port, progNum);
 				break;
 		}
@@ -97,41 +103,42 @@ int main(int argc, char const *argv[])
 //	=== Business functions ===
 
 bool shutdownChildren() {
-	//TODO
+	printf("shutdownChildren\n");
 	return EXIT_SUCCESS;
 }
 
-char** readQuery() {
-	char* res[MAX_QUERY_ARGS];
-
+void readQuery(char** query) {
 	char buffRd[BUFF_SIZE];
-	
-	if (sread(STDIN_FILENO, bufRd, BUFF_SIZE) == -1) {
+	if (sread(STDIN_FILENO, buffRd, BUFF_SIZE) == -1) {
 		perror("ERROR : can not read the file");
 		exit(EXIT_FAILURE);
 	}
 	char* token = strtok(buffRd, " ");
+	int i=0;
 	for(int i=0; i<MAX_QUERY_ARGS; i++) {
 		//malloc
 		char* arg = (char*) malloc(MAX_QUERY_ARG_LENGHT * sizeof(char));
-		strcpy(arg, token);
-		res[i] = arg;
-		token = strtok(NULL, " ");
+		if(token != NULL) {
+			strcpy(arg, token);
+			query[i] = arg;
+			token = strtok(NULL, " ");	
+		}else {
+			query[i] = arg;
+		}
 	}
-	return res;
 }
 
-void addProg(char* addr, int port, char* filePath) {
+void addProg(const char* addr, int port, char* filePath) {
 	printf("add prog %s\n", filePath);
 	//TODO
 }
 
-void replaceProg(char* addr, int port, int progNum, char* filePath) {
+void replaceProg(const char* addr, int port, int progNum, char* filePath) {
 	printf("replace prog num. %d with %s\n", progNum, filePath);
 	//TODO
 }
 
-void execProgOnce(char* addr, int port, int progNum) {
+void execProgOnce(const char* addr, int port, int progNum) {
 	printf("execute prog num. %d\n", progNum);
 	//TODO
 }
