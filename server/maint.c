@@ -1,8 +1,10 @@
-#include "utils_v10.h"
+#include "../utils_v10.h"
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <errno.h>
+
+
 
 #define PERM 0666
 //TODO mettre un fichier existant
@@ -13,7 +15,6 @@
 int createSharedMemory(key_t key){
     return sshmget(key, SHAREDMEMSIZE, IPC_CREAT | PERM);
 }
-
 
 int main(int argc, char **argv)
 {
@@ -54,7 +55,7 @@ int main(int argc, char **argv)
         sem_down0(semaID);
         sleep(duration);
         sem_up0(semaID);
-        //
+        // is it ok to do that ?
         sshmdt(sshmat(sharedMemID));
     }
     else
