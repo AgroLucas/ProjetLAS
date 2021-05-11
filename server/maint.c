@@ -4,13 +4,8 @@
 #include <sys/shm.h>
 #include <errno.h>
 
-
-
 #define PERM 0666
-//TODO mettre un fichier existant
-#define PATHFILE "test.txt"
-//TODO trouver la taille exacte de la memoire partagée
-#define SHAREDMEMSIZE 42
+#define SHAREDMEMSIZE sizeof(int) + 1000*sizeof(struct Programme)
 
 int createSharedMemory(key_t key){
     return sshmget(key, SHAREDMEMSIZE, IPC_CREAT | PERM);
@@ -26,18 +21,18 @@ int main(int argc, char **argv)
     int type = atoi(argv[1]);
     int sharedMemID;
     int semaID;
-    key_t keylock;
+    //voir IPC_conf.h sem6  créer same acceskey entre programmes
+    key_t keylock; // TODO initialiser les clefs dans const.h
     int noSemaphore = 1;  //TODO bonne valeur ?
     if (type == 1)
     {
-        keylock = ftok(PATHFILE, 0);
         sharedMemID = createSharedMemory(keylock);
         semaID = sem_create(keylock, 1, IPC_CREAT | PERM, 0);
     }
     else if (type == 2)
     {
-        keylock = ftok(PATHFILE, 0);
-        sharedMemID = createSharedMemory(keylock);
+        sharedMemID = sshmget(keylock, SHAREDMEMSIZE, 0);
+        //sharedMemID = createSharedMemory(keylock);
         sshmdelete(sharedMemID);
         semaID = sem_get(keylock, noSemaphore);
         sem_delete(semaID);
@@ -48,15 +43,13 @@ int main(int argc, char **argv)
         int duration = atoi(argv[2]);
         checkNeg(duration, "la duree ne peut pas etre negative\n");
        
-        keylock = ftok(PATHFILE, 0);
-        sharedMemID = createSharedMemory(keylock);
+        //sharedMemID = createSharedMemory(keylock);
         semaID = sem_get(keylock, noSemaphore);
-        sshmat(sharedMemID);
+        //sshmat(sharedMemID);
         sem_down0(semaID);
         sleep(duration);
         sem_up0(semaID);
-        // is it ok to do that ?
-        sshmdt(sshmat(sharedMemID));
+       //sshmdt(sshmat(sharedMemID));
     }
     else
     {

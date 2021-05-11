@@ -6,6 +6,10 @@
 #define SERVER_IP 127.0.0.1
 #define MAX_PROG_NAME 255
 
+#define PERM 0666
+//TODO choisir valeur de clef
+#define KEY 5
+
 
 typedef struct Programme {
 	int programmeID;
