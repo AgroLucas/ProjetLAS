@@ -169,14 +169,13 @@ char* generateFreePath(char* progName) {
 
 //TODO get from shared memory or NULL if does not exist
 Programm getProgram(int programId) {
-	Programm program;
+	Programm program = {programId, "helloWorld.c", false, 0, 0};
 	return program;
 }
 
 
 void modifyProgram(Programm program, int clientSocket) {
-	overwriteFromInputIntoOutput(clientSocket, program.fichierSource);
-
+	overwriteFromInputIntoClosedOutput(clientSocket, program.fichierSource);
 	int pipefd[2];
 	spipe(pipefd);
 	int childId = fork_and_run2(compileAndGetErrors, program.fichierSource, pipefd);
@@ -198,8 +197,8 @@ void modifyProgram(Programm program, int clientSocket) {
 	//send Response to client
 	swrite(clientSocket, &compilationResponse, sizeof(compilationResponse));
 	swrite(clientSocket, errors, strlen(errors) * sizeof(char));
-	
-	
+	sshutdown(clientSocket, SHUT_WR);
+
 
 	free(errors);
 	sclose(clientSocket);
