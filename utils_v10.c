@@ -521,20 +521,21 @@ void sshutdown(int sockfd, int how) {
 
 void overwriteFromInputIntoClosedOutput(int input, char* outputPath) {
   int fd = sopen(outputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
-  int sizeRead;
-  int sizeWritten;
-  char buffer[BUFFER_SIZE];
-  do {
-    sizeRead = sread(input, buffer, BUFFER_SIZE);
-    sizeWritten = swrite(fd, buffer, sizeRead);
-    if (sizeRead != sizeWritten) {//checkCond
-      //todo ask how to end 
-      break;
-    }
-  } while (sizeRead > 0);
+  readThenWrite(input, fd);
   sclose(fd);
 }
 
+void readThenWrite(int infd, int outfd) {
+  char buff[BUFF_SIZE];
+  int nbRd;
+  do {
+    nbRd = sread(infd; buff, BUFF_SIZE);
+    checkCond(
+      swrite(outfd, buff, nbRd) != nbRd,
+      "Error writing on socket");
+  }while(nbRd > 0);
+  checkNeg(nbRd, "Error reading in file");
+}
 
 void getStringFromInput(char** string, int inputFile) {
   int sizeRead;
