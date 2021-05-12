@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
 #include "../utils_v10.h"
 #include "../const.h"
@@ -10,9 +11,11 @@
 #define NBR_PROGS 1000
 
 #define PERM 0666
-//sharedMem 2 en 1 --> indice du tableau + structure associée
+//sharedMem 2 en 1 -#include <sys/time.h>-> indice du tableau + structure associée
 // aka int + taille de la structure * nbre de structures existantes
-#define SHAREDMEMSIZE sizeof(int) + 1000*sizeof(struct Programme) 
+#define SHAREDMEMSIZE sizeof(int) + 1000 * sizeof(struct Programme)
+
+
 
 int main(int argc, char **argv)
 {
@@ -27,21 +30,18 @@ int main(int argc, char **argv)
         printf("programmeID invalide");
         exit(EXIT_FAILURE);
     }
-    
-    //Programm programme = repertoireProgs[noProgramme - 1];
-    //TODO initialiser la clef
-    key_t key;
+
     int noSemaphore = 1;
-    int semaID = sem_get(key, noSemaphore);
+    int semaID = sem_get(SEMA_KEY, noSemaphore);
 
     //va chercher la sharedMem avec une perm de 0 car on ne fait que la rechercher
-    int sharedMemID = sshmget(key, SHAREDMEMSIZE, 0);
-    //return la sharedMem 
-    void* shm = sshmat(sharedMemID);
+    int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
+    //return la sharedMem
+    void *shm = sshmat(sharedMemID);
     //donne la taille de la sharedMem
-    int* tailleLogique = shm;
+    int *tailleLogique = shm;
     //pointe vers une structure contenue dans sharedMem
-    struct Programme* tab = shm + sizeof(int);
+    struct Programme *tab = shm + sizeof(int);
     //lock les ressources
     sem_down0(semaID);
     //si pas de programme à cet indice là --> erreur
@@ -55,6 +55,7 @@ int main(int argc, char **argv)
     printf("%s", tab[noProgramme].hasError ? "true" : "false");
     printf("%d", tab[noProgramme].nombreExcecutions);
     printf("%d", tab[noProgramme].tempsExcecution);
+    //printf("%d", afficherTimeExec(tab[noProgramme]));
 
     // relache la sharedMem
     sshmdt(sshmat(sharedMemID));
