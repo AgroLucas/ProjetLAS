@@ -122,7 +122,7 @@ void replaceProg(const char* addr, int port, int progNum, char* filePath) {
 
 void execProgOnce(const char* addr, int port, int progNum) {
 	printf("execute prog num. %d\n", progNum);
-	Request req = {-2, progNum, NULL};
+	Request req = {-2, progNum, ""};
 
 	int sockfd = initSocketClient(addr, port);
 	swrite(sockfd, &req, sizeof(Request));
@@ -135,9 +135,9 @@ void execProgOnce(const char* addr, int port, int progNum) {
 	do {
 		nbRd = sread(sockfd, buffRd, SOCK_BUFF_SIZE);
 		checkCond(
-			swrite(STDOUT_FILENO, buffRd, nbRd) != SOCK_BUFF_SIZE, 
+			swrite(STDOUT_FILENO, buffRd, nbRd) != nbRd, 
 			"Error writing on STDOUT");	
-	}while(nbRd == SOCK_BUFF_SIZE);
+	}while(nbRd > 0);
 }
 
 void execProgReccur(int progNum) {
