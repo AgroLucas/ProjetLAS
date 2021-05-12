@@ -526,10 +526,10 @@ void overwriteFromInputIntoClosedOutput(int input, char* outputPath) {
 }
 
 void readThenWrite(int infd, int outfd) {
-  char buff[BUFF_SIZE];
+  char buff[BUFFER_SIZE];
   int nbRd;
   do {
-    nbRd = sread(infd; buff, BUFF_SIZE);
+    nbRd = sread(infd, buff, BUFFER_SIZE);
     checkCond(
       swrite(outfd, buff, nbRd) != nbRd,
       "Error writing on socket");
