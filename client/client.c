@@ -2,14 +2,16 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "../utils_v10.h"
 #include "../const.h"
 
 #define MAX_QUERY_ARGS 3
 #define MAX_QUERY_ARG_LENGHT 128
-#define BUFF_SIZE 3*MAX_QUERY_ARG_LENGHT
-#define SOCK_BUFF_SIZE 256
+#define QUERY_BUFF_SIZE 3*MAX_QUERY_ARG_LENGHT
 
 /*
 *PRE: 	Children process are running.
@@ -17,6 +19,8 @@
 *RET:	Boolean (true = successful shutdown)
 */
 bool shutdownChildren();
+void runReccurChild(int* pipefd);
+void runClockChild(int* pipefd);
 
 /**
 *PRE:	query is an array of char* (length = MAX_QUERY_ARGS)
@@ -28,7 +32,7 @@ void addProg(const char*, int, char*);
 void replaceProg(const char*, int, int, char*);
 void execProgOnce(const char*, int, int);
 void execProgReccur(int);
-
+void readThenWrite(int infd, int outfd);
 //	=== main ===
 
 /*
@@ -44,7 +48,12 @@ int main(int argc, char const *argv[])
 	int port = atoi(argv[2]);
 	int delay = atoi(argv[3]);
 
-	//TODO forks
+	int pipefd[2];
+	spipe(pipefd);
+	sclose(pipefd[0]);
+
+	fork_and_run1(runReccurChild, pipefd);
+	fork_and_run1(runClockChild, pipefd);
 
 	bool quit = false;
 	while(!quit) {
@@ -79,19 +88,20 @@ int main(int argc, char const *argv[])
 			free(query[i]);
 		}
 	}
-	exit(shutdownChildren());
+	sclose(pipefd[1])
+	exit(killChildren());
 }
 
 //	=== Business functions ===
 
-bool shutdownChildren() {
+bool killChildren() {
 	printf("shutdownChildren\n");
 	return EXIT_SUCCESS;
 }
 
 void readQuery(char** query) {
-	char buffRd[BUFF_SIZE];
-	if (sread(STDIN_FILENO, buffRd, BUFF_SIZE) == -1) {
+	char buffRd[QUERY_BUFF_SIZE];
+	if (sread(STDIN_FILENO, buffRd, QUERY_BUFF_SIZE) == -1) {
 		perror("ERROR : can not read the file");
 		exit(EXIT_FAILURE);
 	}
@@ -110,37 +120,66 @@ void readQuery(char** query) {
 	}
 }
 
+//	=== Request functions ===
+
 void addProg(const char* addr, int port, char* filePath) {
 	printf("add prog '%s'\n", filePath);
-	//TODO
+	replaceProg(addr, port, -1, filePath);
 }
 
 void replaceProg(const char* addr, int port, int progNum, char* filePath) {
-	printf("replace prog num. %d with '%s'\n", progNum, filePath);
-	//TODO
+	int lenFilePath = strlen(filePath);
+	Request req = {progNum, lenFilePath, *filePath};
+	int sockfd = initSocketClient(addr, port);
+	int filefd = sopen(filePath, O_RDONLY, 0744);
+	swrite(sockfd, &req, sizeof(Request));
+	readThenWrite(filefd, sockfd);
+
+	sshutdown(sockfd, SHUT_WR);
+
+	CompilationResponse cResponse;
+	checkNeg(
+		sread(sockfd, &cResponse, sizeof(CompilationResponse)), 
+		"Error reading CompilationResponse");
+
+	printf("Replace program no. %d\nExit code: %d\nEventual error msg: \n", 
+		cResponse.n, cResponse.exitCode);
+	readThenWrite(sockfd, STDOUT_FILENO);
+	sclose(sockfd);
 }
 
 void execProgOnce(const char* addr, int port, int progNum) {
-	printf("execute prog num. %d\n", progNum);
-	Request req = {-2, progNum, NULL};
+	Request req = {-2, progNum, ""};
 
 	int sockfd = initSocketClient(addr, port);
 	swrite(sockfd, &req, sizeof(Request));
-	shutdown(sockfd, SHUT_WR);
+	sshutdown(sockfd, SHUT_WR);
 
 	//read
-	char buffRd[SOCK_BUFF_SIZE];
-
-	int nbRd;
-	do {
-		nbRd = sread(sockfd, buffRd, SOCK_BUFF_SIZE);
-		checkCond(
-			swrite(STDOUT_FILENO, buffRd, nbRd) != SOCK_BUFF_SIZE, 
-			"Error writing on STDOUT");	
-	}while(nbRd == SOCK_BUFF_SIZE);
+	printf("Exec. program no. %d", progNum);
+	readThenWrite(sockfd, STDOUT_FILENO);
+	sclose(sockfd);
 }
 
 void execProgReccur(int progNum) {
 	printf("add prog num. %d to reccurent programs\n", progNum);
 	//TODO
+}
+
+//	=== Child functions ===
+
+void runReccurChild(int pipefd) {
+	sclose(pipefd[1]);
+
+	//todo while(!reqQuit)
+
+	sclose(pipefd[0]);
+}
+
+void runClockChild(int* pipefd) {
+	sclose(pipefd[0]);
+
+	//todo while(!clockQuit)
+
+	sclose(pipefd[1]);
 }

@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+/* Used for gettimeofday */
+#include <sys/time.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,13 +24,15 @@
 void requestHandler(void* arg1);
 
 void executeProgram(int programId, int clientSocket);
-void compile(void* arg1, void* arg2);
+long getCurrentMs();
 void executeAndGetSdtout(void* arg1, void* arg2);
+
+Programm getProgram(int programId);
 
 Programm createEmptyProgram(char* progName);
 int getFreeIdNumber();
 char* generateFreePath(char* progName);
-Programm getProgram(int programId);
+
 void modifyProgram(Programm program, int clientSocket);
 void compileAndGetErrors(void* arg1, void* arg2);
 
@@ -59,76 +63,66 @@ void requestHandler(void* arg1) {
 
 	if (request.firstInt == -2)	return executeProgram(request.secondInt, *clientSocket);
 	
-	Programm program;
-	if (request.firstInt == -1) 
-		program = createEmptyProgram(request.progName);
-	else 
-		program = getProgram(request.firstInt);
+	Programm program = request.firstInt == -1 ? createEmptyProgram(request.progName) : getProgram(request.firstInt);
 
 	modifyProgram(program, *clientSocket);
 }
 
 
 void executeProgram(int programId, int clientSocket) {
-	int progStatus = 1;
+	int programState = 1;
 	int executionTime = 0;
-	int statusCode = -1;
+	int exitCode = 0;
+	//TODO GET PATH
+	char* executablePath;
 
 	char* stdout;
 
 	Programm program = getProgram(programId);
-	if (program.fichierSource == NULL)
-		progStatus = -2;
+	if (program.fichierSource == NULL) //program does not exist
+		programState = -2;
+	else if (program.hasError)
+		programState = -1;			//program does not compile
 	else {
-		//TODO demander comment gérer le a.out
-		char* executablePath;
+		//execute prog and get stdout in variable
+		int pipefd[2];
+		spipe(pipefd);
 
-		int childId = fork_and_run2(compile, program.fichierSource, executablePath);
+		long ms1 = getCurrentMs();
+		int childId = fork_and_run2(executeAndGetSdtout, executablePath, pipefd);
 		int status;
 		swaitpid(childId, &status, 0);
-		statusCode = WEXITSTATUS(status);
-		if (statusCode != 0) {
-			progStatus = -1;
-			//TODO update hasError from shared memory
-		} else {
-			int pipefd[2];
-			spipe(pipefd);
-			childId = fork_and_run2(executeAndGetSdtout, executablePath, pipefd);
-			sclose(pipefd[1]);
-			getStringFromInput(&stdout, pipefd[0]);
-			sclose(pipefd[0]);
+		executionTime = getCurrentMs() - ms1;
 
-			status;
-			swaitpid(childId, &status, 0);
-			int exitCode = WEXITSTATUS(status);
+		sclose(pipefd[1]);
+		getStringFromInput(&stdout, pipefd[0]);
+		sclose(pipefd[0]);
+		exitCode = WEXITSTATUS(status);
 
-			if (exitCode != 0) {
-				progStatus =  0;
-				//TODO update hasError from shared memory
-			}
-		}	
-	}
-
-	ExecuteResponse executeResponse = {programId, progStatus, executionTime, statusCode};
-
+		if (exitCode != 0)
+			programState =  0;			//program does not end normally
+	}	
+	
+	//TODO extract in method for avoiding nested if
+	//send Response to client
+	ExecuteResponse executeResponse = {programId, programState, executionTime, exitCode};
 	swrite(clientSocket, &executeResponse, sizeof(executeResponse));
 	swrite(clientSocket, stdout, strlen(stdout)*sizeof(char));
-	//TODO demander comment faire pour terminer le read autre que par un EOF
-	//simulate CTRL + D
-	int c = EOF;
-	swrite(clientSocket, &c, sizeof(int));
-
+	sshutdown(clientSocket, SHUT_WR);
+	
+	free(stdout);
 	sclose(clientSocket);
 }
 
 
-void compile(void* arg1, void* arg2) {
-	char* path = arg1;
-	char* executablePath = arg2;
-	sexecl("/bin/gcc", "gcc", "-o", executablePath, path, NULL);
+long getCurrentMs() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return (tv.tv_sec * 1000) + tv.tv_usec;
 }
 
-//TODO ask how to get execution time and how to return it
+
+//todo remove close to have only sexecl - make dup before and after fork and run
 void executeAndGetSdtout(void* arg1, void* arg2) {
 	char* executablePath = arg1;
 	int *pipefd = arg2;
@@ -162,7 +156,7 @@ int getFreeIdNumber() {
 	return 0;
 }
 
-//TODO demander comment gérer repertoire de code
+//TODO
 char* generateFreePath(char* progName) {
 	return NULL;
 }
@@ -175,7 +169,9 @@ Programm getProgram(int programId) {
 
 
 void modifyProgram(Programm program, int clientSocket) {
+	//write into program file source
 	overwriteFromInputIntoClosedOutput(clientSocket, program.fichierSource);
+	//compile and get errors in variable
 	int pipefd[2];
 	spipe(pipefd);
 	int childId = fork_and_run2(compileAndGetErrors, program.fichierSource, pipefd);
@@ -192,9 +188,8 @@ void modifyProgram(Programm program, int clientSocket) {
 		//TODO update hasError from shared memory
 	}
 
-	CompilationResponse compilationResponse = {program.programmeID, exitCode};
-
 	//send Response to client
+	CompilationResponse compilationResponse = {program.programmeID, exitCode};
 	swrite(clientSocket, &compilationResponse, sizeof(compilationResponse));
 	swrite(clientSocket, errors, strlen(errors) * sizeof(char));
 	sshutdown(clientSocket, SHUT_WR);
