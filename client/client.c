@@ -4,10 +4,12 @@
 #include <string.h>
 
 #include "../utils_v10.h"
+#include "../const.h"
 
 #define MAX_QUERY_ARGS 3
 #define MAX_QUERY_ARG_LENGHT 128
 #define BUFF_SIZE 3*MAX_QUERY_ARG_LENGHT
+#define SOCK_BUFF_SIZE 256
 
 /*
 *PRE: 	Children process are running.
@@ -120,7 +122,22 @@ void replaceProg(const char* addr, int port, int progNum, char* filePath) {
 
 void execProgOnce(const char* addr, int port, int progNum) {
 	printf("execute prog num. %d\n", progNum);
-	//TODO
+	Request req = {-2, progNum, NULL};
+
+	int sockfd = initSocketClient(addr, port);
+	swrite(sockfd, &req, sizeof(Request));
+	shutdown(sockfd, SHUT_WR);
+
+	//read
+	char buffRd[SOCK_BUFF_SIZE];
+
+	int nbRd;
+	do {
+		nbRd = sread(sockfd, buffRd, SOCK_BUFF_SIZE);
+		checkCond(
+			swrite(STDOUT_FILENO, buffRd, nbRd) != SOCK_BUFF_SIZE, 
+			"Error writing on STDOUT");	
+	}while(nbRd == SOCK_BUFF_SIZE);
 }
 
 void execProgReccur(int progNum) {

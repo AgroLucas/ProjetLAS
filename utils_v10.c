@@ -493,7 +493,7 @@ int initSocketServer(int port) {
   return sockfd;
 }
 
-int initSocketClient(char serverIp[16], int serverPort) {
+int initSocketClient(const char* serverIp, const int serverPort) {
   int sockfd;
     struct sockaddr_in addr;
 
