@@ -37,6 +37,8 @@ int getFreeIdNumber();
 void modifyProgram(Programm program, int clientSocket);
 void compileAndGetErrors(void* arg1, void* arg2, void* arg3);
 
+char* getProgPath(int programId, char* extension);
+
 
 int main(int argc, char **argv) {
 	if (argc != 2) {
@@ -74,11 +76,8 @@ void executeProgram(int programId, int clientSocket) {
 	int programState = 1;
 	int executionTime = 0;
 	int exitCode = 0;
-	//todo extract in method
-	char* stringId;
-	sprintf(stringId,"%d", programId);
-	char* executablePath = strcat(BASE_PROG_PATH, stringId);
-	executablePath = strcat(executablePath, ".out");
+
+	char* executablePath = getProgPath(programId, "out");
 
 	char* stdout;
 
@@ -169,13 +168,8 @@ Programm getProgram(int programId) {
 
 
 void modifyProgram(Programm program, int clientSocket) {
-	//todo extract in method
-	char* stringId;
-	sprintf(stringId,"%d", program.programmeID);
-	char* inputPath = strcat(BASE_PROG_PATH, stringId);
-	inputPath = strcat(inputPath, ".c");
-	char* outputPath = strcat(BASE_PROG_PATH, stringId);
-	outputPath = strcat(outputPath, ".out");
+	char* inputPath = getProgPath(program.programmeID, "c");
+	char* outputPath = getProgPath(program.programmeID, "out");
 	//write into program file source
 	overwriteFromInputIntoClosedOutput(clientSocket, inputPath);
 	//compile and get errors in variable
@@ -219,4 +213,14 @@ void compileAndGetErrors(void* arg1, void* arg2, void* arg3) {
 	sexecl("/bin/gcc", "gcc", "-o",  outputPath, inputPath, NULL);
 
 	sclose(pipefd[1]);
+}
+
+
+char* getProgPath(int programId, char* extension) {
+	char* stringId;
+	sprintf(stringId,"%d", programId);
+	char* path = strcat(BASE_PROG_PATH, stringId);
+	path = strcat(path, ".");
+	path = strcat(path, extension);
+	return path;
 }
