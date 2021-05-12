@@ -18,7 +18,7 @@
 *POST: 	SIGUSR1 signal are send to both children, shuting them down.
 *RET:	Boolean (true = successful shutdown)
 */
-bool shutdownChildren();
+bool killChildren();
 void runReccurChild(int* pipefd);
 void runClockChild(int* pipefd);
 
@@ -52,8 +52,8 @@ int main(int argc, char const *argv[])
 	spipe(pipefd);
 	sclose(pipefd[0]);
 
-	fork_and_run1(runReccurChild, pipefd);
-	fork_and_run1(runClockChild, pipefd);
+	//fork_and_run1(runReccurChild, &pipefd);
+	//fork_and_run1(runClockChild, &pipefd);
 
 	bool quit = false;
 	while(!quit) {
@@ -88,7 +88,7 @@ int main(int argc, char const *argv[])
 			free(query[i]);
 		}
 	}
-	sclose(pipefd[1])
+	sclose(pipefd[1]);
 	exit(killChildren());
 }
 
@@ -142,8 +142,15 @@ void replaceProg(const char* addr, int port, int progNum, char* filePath) {
 		sread(sockfd, &cResponse, sizeof(CompilationResponse)), 
 		"Error reading CompilationResponse");
 
-	printf("Replace program no. %d\nExit code: %d\nEventual error msg: \n", 
+	if(progNum != -1){
+		printf("Add Program :\n");
+	} else {
+		printf("Replace Program :\n");
+	}
+
+	printf("Program no. %d\nExit code: %d\nEventual error msg: \n",
 		cResponse.n, cResponse.exitCode);
+	
 	readThenWrite(sockfd, STDOUT_FILENO);
 	sclose(sockfd);
 }
@@ -168,18 +175,10 @@ void execProgReccur(int progNum) {
 
 //	=== Child functions ===
 
-void runReccurChild(int pipefd) {
-	sclose(pipefd[1]);
-
-	//todo while(!reqQuit)
-
-	sclose(pipefd[0]);
+void runReccurChild(int* pipefd) {
+	
 }
 
 void runClockChild(int* pipefd) {
-	sclose(pipefd[0]);
-
-	//todo while(!clockQuit)
-
-	sclose(pipefd[1]);
+	
 }
