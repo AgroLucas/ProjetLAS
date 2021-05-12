@@ -82,26 +82,28 @@ void executeProgram(int programId, int clientSocket) {
 	if (program.fichierSource == NULL) //program does not exist
 		programState = -2;
 	else if (program.hasError)
-		programState = -1;				//program does not compile
+		programState = -1;			//program does not compile
 	else {
 		//execute prog and get stdout in variable
 		int pipefd[2];
 		spipe(pipefd);
 
+		long ms1 = getCurrentMs();
 		int childId = fork_and_run2(executeAndGetSdtout, executablePath, pipefd);
+		int status;
+		swaitpid(childId, &status, 0);
+		executionTime = getCurrentMs() - ms1;
+
 		sclose(pipefd[1]);
 		getStringFromInput(&stdout, pipefd[0]);
 		sclose(pipefd[0]);
-
-		int status;
-		swaitpid(childId, &status, 0);
-
 		exitCode = WEXITSTATUS(status);
 
 		if (exitCode != 0)
 			programState =  0;			//program does not end normally
 	}	
-
+	
+	//TODO extract in method for avoiding nested if
 	//send Response to client
 	ExecuteResponse executeResponse = {programId, programState, executionTime, exitCode};
 	swrite(clientSocket, &executeResponse, sizeof(executeResponse));
@@ -120,8 +122,7 @@ long getCurrentMs() {
 }
 
 
-//use getTimeOfDay before after then make -
-//todo remove close to have only sexecl
+//todo remove close to have only sexecl - make dup before and after fork and run
 void executeAndGetSdtout(void* arg1, void* arg2) {
 	char* executablePath = arg1;
 	int *pipefd = arg2;
