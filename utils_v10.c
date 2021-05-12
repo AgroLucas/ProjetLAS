@@ -493,6 +493,26 @@ int initSocketServer(int port) {
   return sockfd;
 }
 
+int initSocketClient(char[16] serverIp, int serverPort) {
+  int sockfd;
+    struct sockaddr_in addr;
+
+  // create socket
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+  // prepare socket to connect
+  memset(&addr, 0, sizeof(addr));
+
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(serverPort);
+  inet_aton(serverIp, &addr.sin_addr);
+
+  // connect socket to server
+  connect(sockfd, (struct sockaddr *) &addr, sizeof(addr));
+
+  return sockfd;
+}
+
 
 void overwriteFromInputIntoOutput(int input, char* outputPath) {
   int fd = sopen(outputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);

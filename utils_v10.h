@@ -351,6 +351,9 @@ int spoll(struct pollfd *fds, nfds_t nfds, int timeout);
 int initSocketServer(int port);
 
 
+int initSocketClient(char[16] serverIp, int serverPort) 
+
+
 void overwriteFromInputIntoOutput(int input, char* outputPath);
 
 
