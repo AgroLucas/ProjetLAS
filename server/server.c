@@ -20,6 +20,8 @@
 #include "../utils_v10.h"
 #include "../const.h"
 
+#define BASE_PROG_PATH "./progs/"
+
 
 void requestHandler(void* arg1);
 
@@ -31,10 +33,9 @@ Programm getProgram(int programId);
 
 Programm createEmptyProgram(char* progName);
 int getFreeIdNumber();
-char* generateFreePath(char* progName);
 
 void modifyProgram(Programm program, int clientSocket);
-void compileAndGetErrors(void* arg1, void* arg2);
+void compileAndGetErrors(void* arg1, void* arg2, void* arg3);
 
 
 int main(int argc, char **argv) {
@@ -73,8 +74,11 @@ void executeProgram(int programId, int clientSocket) {
 	int programState = 1;
 	int executionTime = 0;
 	int exitCode = 0;
-	//TODO GET PATH
-	char* executablePath;
+	//todo extract in method
+	char* stringId;
+	sprintf(stringId,"%d", programId);
+	char* executablePath = strcat(BASE_PROG_PATH, stringId);
+	executablePath = strcat(executablePath, ".out");
 
 	char* stdout;
 
@@ -140,7 +144,7 @@ void executeAndGetSdtout(void* arg1, void* arg2) {
 Programm createEmptyProgram(char* progName) {
 	Programm program;
 	program.programmeID = getFreeIdNumber();
-	program.fichierSource = generateFreePath(progName);
+	program.fichierSource = progName;
 	program.hasError = false;
 	program.nombreExcecutions = 0;
 	program.tempsExcecution = 0;
@@ -151,14 +155,10 @@ Programm createEmptyProgram(char* progName) {
 	return program;
 }
 
-//TODO return nbr of progs existing+1
-int getFreeIdNumber() {
-	return 0;
-}
-
 //TODO
-char* generateFreePath(char* progName) {
-	return NULL;
+int getFreeIdNumber() {
+	//return number of progs in shared memory
+	return 0;
 }
 
 //TODO get from shared memory or NULL if does not exist
@@ -169,12 +169,19 @@ Programm getProgram(int programId) {
 
 
 void modifyProgram(Programm program, int clientSocket) {
+	//todo extract in method
+	char* stringId;
+	sprintf(stringId,"%d", program.programmeID);
+	char* inputPath = strcat(BASE_PROG_PATH, stringId);
+	inputPath = strcat(inputPath, ".c");
+	char* outputPath = strcat(BASE_PROG_PATH, stringId);
+	outputPath = strcat(outputPath, ".out");
 	//write into program file source
-	overwriteFromInputIntoClosedOutput(clientSocket, program.fichierSource);
+	overwriteFromInputIntoClosedOutput(clientSocket, inputPath);
 	//compile and get errors in variable
 	int pipefd[2];
 	spipe(pipefd);
-	int childId = fork_and_run2(compileAndGetErrors, program.fichierSource, pipefd);
+	int childId = fork_and_run3(compileAndGetErrors, inputPath, outputPath, pipefd);
 	sclose(pipefd[1]);
 	char* errors;
 	getStringFromInput(&errors, pipefd[0]);
@@ -200,15 +207,16 @@ void modifyProgram(Programm program, int clientSocket) {
 }
 
 
-void compileAndGetErrors(void* arg1, void* arg2) {
-	char* path = arg1;
-	int *pipefd = arg2;
+void compileAndGetErrors(void* arg1, void* arg2, void* arg3) {
+	char* inputPath = arg1;
+	char* outputPath = arg2;
+	int *pipefd = arg3;
 
 	sclose(pipefd[0]);
 
 	dup2(pipefd[1], 2);
 
-	sexecl("/bin/gcc", "gcc", path, NULL);
+	sexecl("/bin/gcc", "gcc", "-o",  outputPath, inputPath, NULL);
 
 	sclose(pipefd[1]);
 }
