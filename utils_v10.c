@@ -493,7 +493,7 @@ int initSocketServer(int port) {
   return sockfd;
 }
 
-int initSocketClient(char[16] serverIp, int serverPort) {
+int initSocketClient(char serverIp[16], int serverPort) {
   int sockfd;
     struct sockaddr_in addr;
 
@@ -515,19 +515,23 @@ int initSocketClient(char[16] serverIp, int serverPort) {
 
 void sshutdown(int sockfd, int how) {
   int res = shutdown(sockfd, how);
-  checkNeg(res);
+  checkNeg(res, "ERROR shutdown");
 }
 
 
-void overwriteFromInputIntoOutput(int input, char* outputPath) {
+void overwriteFromInputIntoClosedOutput(int input, char* outputPath) {
   int fd = sopen(outputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
   int sizeRead;
-  char c;
+  int sizeWritten;
+  char buffer[BUFFER_SIZE];
   do {
-    sizeRead = sread(input, &c, sizeof(char));
-    if (c != EOF)
-      swrite(fd, &c, sizeof(char));
-  } while (c != EOF);
+    sizeRead = sread(input, buffer, BUFFER_SIZE);
+    sizeWritten = swrite(fd, buffer, sizeRead);
+    if (sizeRead != sizeWritten) {//checkCond
+      //todo ask how to end 
+      break;
+    }
+  } while (sizeRead > 0);
   sclose(fd);
 }
 
@@ -544,15 +548,14 @@ void getStringFromInput(char** string, int inputFile) {
   do {
     char buffer[BUFFER_SIZE];
     sizeRead = sread(inputFile, buffer, BUFFER_SIZE);
+    //if not enough space in string then realloc
     if (physicalSize - sizeRead - logicalSize < 0) {
       physicalSize *= 2;
       if ((*string = (char*)realloc(*string, physicalSize*sizeof(char))) == NULL)
         return perror("Allocation dynamique de string impossible");
     }
-    if (sizeRead > 1) {
-      strcat(*string, buffer); 
-      if (buffer[sizeRead-1] == EOF) break;
-    }
+    if (sizeRead > 0)
+      strcat(*string, buffer);
     logicalSize += sizeRead;
   } while (sizeRead != 0);
 }
