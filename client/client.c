@@ -19,6 +19,8 @@
 *RET:	Boolean (true = successful shutdown)
 */
 bool shutdownChildren();
+void runReccurChild(int* pipefd);
+void runClockChild(int* pipefd);
 
 /**
 *PRE:	query is an array of char* (length = MAX_QUERY_ARGS)
@@ -46,7 +48,12 @@ int main(int argc, char const *argv[])
 	int port = atoi(argv[2]);
 	int delay = atoi(argv[3]);
 
-	//TODO forks
+	int pipefd[2];
+	spipe(pipefd);
+	sclose(pipefd[0]);
+
+	fork_and_run1(runReccurChild, pipefd);
+	fork_and_run1(runClockChild, pipefd);
 
 	bool quit = false;
 	while(!quit) {
@@ -81,6 +88,7 @@ int main(int argc, char const *argv[])
 			free(query[i]);
 		}
 	}
+	sclose(pipefd[1])
 	exit(killChildren());
 }
 
@@ -111,6 +119,8 @@ void readQuery(char** query) {
 		}
 	}
 }
+
+//	=== Request functions ===
 
 void addProg(const char* addr, int port, char* filePath) {
 	printf("add prog '%s'\n", filePath);
@@ -154,4 +164,22 @@ void execProgOnce(const char* addr, int port, int progNum) {
 void execProgReccur(int progNum) {
 	printf("add prog num. %d to reccurent programs\n", progNum);
 	//TODO
+}
+
+//	=== Child functions ===
+
+void runReccurChild(int pipefd) {
+	sclose(pipefd[1]);
+
+	//todo while(!reqQuit)
+
+	sclose(pipefd[0]);
+}
+
+void runClockChild(int* pipefd) {
+	sclose(pipefd[0]);
+
+	//todo while(!clockQuit)
+
+	sclose(pipefd[1]);
 }
