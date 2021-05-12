@@ -354,6 +354,9 @@ int initSocketServer(int port);
 int initSocketClient(const char* serverIp, const int serverPort);
 
 
+void sshutdown(int sockfd, int how);
+
+
 void overwriteFromInputIntoOutput(int input, char* outputPath);
 
 

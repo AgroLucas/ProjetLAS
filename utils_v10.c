@@ -513,6 +513,11 @@ int initSocketClient(const char* serverIp, const int serverPort) {
   return sockfd;
 }
 
+void sshutdown(int sockfd, int how) {
+  int res = shutdown(sockfd, how);
+  checkNeg(res);
+}
+
 
 void overwriteFromInputIntoOutput(int input, char* outputPath) {
   int fd = sopen(outputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);

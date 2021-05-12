@@ -198,10 +198,8 @@ void modifyProgram(Programm program, int clientSocket) {
 	//send Response to client
 	swrite(clientSocket, &compilationResponse, sizeof(compilationResponse));
 	swrite(clientSocket, errors, strlen(errors) * sizeof(char));
-	//TODO demander comment faire pour terminer le read autre que par un EOF
-	//simulate CTRL + D
-	int c = EOF;
-	swrite(clientSocket, &c, sizeof(int));
+	
+	
 
 	free(errors);
 	sclose(clientSocket);
