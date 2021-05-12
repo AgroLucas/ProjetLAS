@@ -359,6 +359,9 @@ void sshutdown(int sockfd, int how);
 
 void overwriteFromInputIntoClosedOutput(int input, char* outputPath);
 
+// reads one file descriptor, and writes into another
+void readThenWrite(int infd, int outfd);
+
 
 void getStringFromInput(char** tab, int inputFile);
 
