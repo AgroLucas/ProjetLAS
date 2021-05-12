@@ -24,38 +24,36 @@ int main(int argc, char **argv)
     int type = atoi(argv[1]);
     int sharedMemID;
     int semaID;
-    int noSemaphore = 1; //TODO bonne valeur ?
-    if (type == 1)
+    int noSemaphore = 1; //bonne valeur ?
+
+    switch (type)
     {
+    case 1: //crée les ressources
         sharedMemID = createSharedMemory(SHAREDMEM_KEY);
         semaID = sem_create(SEMA_KEY, 1, IPC_CREAT | PERM, 0);
-    }
-    else if (type == 2)
-    {
+        break;
+
+    case 2: //détruit les ressources
         sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
-        //sharedMemID = createSharedMemory(SHAREDMEM_KEY);
         sshmdelete(sharedMemID);
         semaID = sem_get(SEMA_KEY, noSemaphore);
         sem_delete(semaID);
-    }
-    else if (type == 3)
-    {
+        break;
+
+    case 3: // réserve la sharedMem pour une certaine durée
         checkCond(argc != 3, "la durée de recurrence n'est pas définie\n");
         int duration = atoi(argv[2]);
-        checkNeg(duration, "la duree ne peut pas etre negative\n");
-
-        //sharedMemID = createSharedMemory(SHAREDMEM_KEY);
+        checkCond(duration <= 0, "la duree ne peut pas etre negative ou nulle\n");
         semaID = sem_get(SEMA_KEY, noSemaphore);
-        //sshmat(sharedMemID);
         sem_down0(semaID);
         sleep(duration);
         sem_up0(semaID);
-        //sshmdt(sshmat(sharedMemID));
-    }
-    else
-    {
+        break;
+
+    default:
         printf("Le type est incorrect !");
         exit(EXIT_FAILURE);
+        //break;
     }
     return EXIT_SUCCESS;
 }
