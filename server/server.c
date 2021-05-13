@@ -31,6 +31,8 @@ int getFreeIdNumber();
 
 bool getProgram(Programm* program, int programId);
 
+void setProgram(Programm* program);
+
 bool getProgramPath(int programId, char**path, char* extension);
 
 bool executionHandler(Programm* program, int programId, int clientSocket);
@@ -117,6 +119,11 @@ bool getProgram(Programm* program, int programId) {
 	return true;
 }
 
+//TODO save program into shared memory
+void setProgram(Programm* program) {
+
+}
+
 
 bool getProgramPath(int programId, char** path, char* extension) {
 	int size = strlen(BASE_PROG_PATH) + MAX_STRING_SIZE_INT + strlen(extension);
@@ -129,7 +136,6 @@ bool getProgramPath(int programId, char** path, char* extension) {
 }
 
 
-
 //--- EXECUTION ---
 
 bool executionHandler(Programm* program, int programId, int clientSocket) {
@@ -137,6 +143,9 @@ bool executionHandler(Programm* program, int programId, int clientSocket) {
 	char* stdout;
 
 	if (!prepareExecuteResponse(program, &executeResponse, &stdout)) return false;
+
+	if (programm->programState == GOOD_EXECUTION || programm->programState == WRONG_EXECUTION)
+		setProgram(program);
 
 	sendExecuteResponse(&executeResponse, &stdout, clientSocket);
 	
@@ -171,7 +180,7 @@ bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse,
 		
 		if (executeResponse->exitCode != 0)
 			executeResponse->programState = WRONG_EXECUTION;
-		//todo incrémenter 
+
 		program->nombreExcecutions++;
 	}
 	return true;
@@ -211,6 +220,9 @@ bool compilationHandler(Programm* program, int clientSocket) {
 	char* errors;
 
 	if (!prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket)) return false;
+	
+	setProgram(program);
+
 	sendCompilationResponse(&compilationResponse, &errors, clientSocket);
 
 	free(errors);
@@ -242,9 +254,8 @@ bool prepareCompilationResponse(Programm* program, CompilationResponse* compilat
 	free(inputPath);
 	free(outputPath);
 
-	if (exitCode != 0) {
-		program->hasError = true;
-	}
+	program->hasError = (exitCode == 0) ? false : true;
+
 	return true;
 }
 
