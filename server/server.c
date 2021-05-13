@@ -26,23 +26,24 @@
 
 void requestHandler(void* arg1);
 
-void executeProgram(int programId, int clientSocket);
-void prepareExecuteResponse(ExecuteResponse* executeResponse, char** stdout);
+bool createEmptyProgram(Programm* program, char* progName);
+int getFreeIdNumber();
+
+bool getProgram(Programm* program, int programId);
+
+bool getProgramPath(int programId, char**path, char* extension);
+
+bool executionHandler(Programm* program, int programId, int clientSocket);
+bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse, char** stdout);
 void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int clientSocket);
 long getCurrentMs();
 void executeAndGetSdtout(void* arg1, void* arg2);
 
-void getProgram(Programm* program, int programId);
-
-void createEmptyProgram(Programm* program, char* progName);
-int getFreeIdNumber();
-
-void modifyProgram(Programm* program, int clientSocket);
-void prepareCompilationResponse(CompilationResponse* compilationResponse, Programm* program, char** errors, int clientSocket);
+bool compilationHandler(Programm* program, int clientSocket);
+bool prepareCompilationResponse(Programm* program, CompilationResponse* compilationResponse, char** errors, int clientSocket);
 void sendCompilationResponse(CompilationResponse* compilationResponse, char** errors, int clientSocket);
 void compileAndGetErrors(void* arg1, void* arg2, void* arg3);
 
-void getProgPath(int programId, char**path, char* extension);
 
 
 int main(int argc, char **argv) {
@@ -69,39 +70,89 @@ void requestHandler(void* arg1) {
 	Request request;
 	sread(*clientSocket, &request, sizeof(request));
 
-	if (request.firstInt == EXECUTION_VALUE) return executeProgram(request.secondInt, *clientSocket);
-	
 	Programm* program;
-	request.firstInt == ADD_VALUE ? createEmptyProgram(program, request.progName) : getProgram(program, request.firstInt);
+	bool isProgramAllocated = (request.firstInt == ADD_VALUE) ? createEmptyProgram(program, request.progName) : getProgram(program, request.firstInt);
+	if (isProgramAllocated)
+		(request.firstInt == EXECUTION_VALUE) ? executionHandler(program, request.secondInt, *clientSocket) : compilationHandler(program, *clientSocket);
 
-	modifyProgram(program, *clientSocket);
+	//TODO update program on shared memory if needed only
+
+	free(program);
+	sclose(*clientSocket);
 }
+
+
+
+
+bool createEmptyProgram(Programm* program, char* progName) {
+	if ((program = (Programm*)malloc(sizeof(Programm))) == NULL) {
+		perror("Allocation dynamique de program impossible");
+		return false;
+	}
+	program->programmeID = getFreeIdNumber();
+	program->fichierSource = progName;
+	program->hasError = false;
+	program->nombreExcecutions = 0;
+	program->tempsExcecution = 0;
+	return true;
+}
+
+
+//TODO return number of progs in shared memory
+int getFreeIdNumber() {
+	return 0;
+}
+
+//TODO get from shared memory or NULL if does not exist
+bool getProgram(Programm* program, int programId) {
+	if ((program = (Programm*)malloc(sizeof(Programm))) == NULL) {
+		perror("Allocation dynamique de program impossible");
+		return false;
+	}
+	program->programmeID = programId;
+	program->fichierSource = "helloWorld.c";
+	program->hasError = false;
+	program->nombreExcecutions = 0;
+	program->tempsExcecution = 0;
+	return true;
+}
+
+
+bool getProgramPath(int programId, char** path, char* extension) {
+	int size = strlen(BASE_PROG_PATH) + MAX_STRING_SIZE_INT + strlen(extension);
+	if ((*path = (char*)malloc(size*sizeof(char))) == NULL) {
+		perror("Allocation dynamique de path impossible");
+		return false;
+	}
+	sprintf(*path, "%s%d.%s", BASE_PROG_PATH, programId, extension);
+	return true;
+}
+
 
 
 //--- EXECUTION ---
 
-void executeProgram(int programId, int clientSocket) {
+bool executionHandler(Programm* program, int programId, int clientSocket) {
 	ExecuteResponse executeResponse = {programId, GOOD_EXECUTION, 0, 0};
 	char* stdout;
 
-	prepareExecuteResponse(&executeResponse, &stdout);
+	if (!prepareExecuteResponse(program, &executeResponse, &stdout)) return false;
+
 	sendExecuteResponse(&executeResponse, &stdout, clientSocket);
 	
 	free(stdout);
-	sclose(clientSocket);
+	return true;
 }
 
 
-void prepareExecuteResponse(ExecuteResponse* executeResponse, char** stdout) {
-	Programm* program;
-	getProgram(program, executeResponse->n);
+bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse, char** stdout) {
 	if (program == NULL)
 		executeResponse->programState = NOT_EXIST;
 	else if (program->hasError)
 		executeResponse->programState = NOT_COMPILE;
-	else {											//execute prog and get stdout in variable
+	else {
 		char* executablePath;
-		getProgPath(executeResponse->n, &executablePath, "out");
+		if (!getProgramPath(executeResponse->n, &executablePath, "out")) return false;
 
 		int pipefd[2];
 		spipe(pipefd);
@@ -121,7 +172,9 @@ void prepareExecuteResponse(ExecuteResponse* executeResponse, char** stdout) {
 		if (executeResponse->exitCode != 0)
 			executeResponse->programState = WRONG_EXECUTION;
 		//todo incrémenter 
+		program->nombreExcecutions++;
 	}
+	return true;
 }
 
 
@@ -151,45 +204,25 @@ void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int cl
 }
 
 
-void createEmptyProgram(Programm* program, char* progName) {
-	if ((program = (Programm*)malloc(sizeof(Programm))) == NULL) {
-		perror("Allocation dynamique de program impossible");
-		exit(1);
-	}
-	program->programmeID = getFreeIdNumber();
-	program->fichierSource = progName;
-	program->hasError = false;
-	program->nombreExcecutions = 0;
-	program->tempsExcecution = 0;
+//--- COMPILATION ---
 
-	//TODO put in shared memory
-}
-
-
-//TODO
-int getFreeIdNumber() {
-	//return number of progs in shared memory
-	return 0;
-}
-
-
-void modifyProgram(Programm* program, int clientSocket) {
+bool compilationHandler(Programm* program, int clientSocket) {
 	CompilationResponse compilationResponse = {program->programmeID, 0};
 	char* errors;
 
-	prepareCompilationResponse(&compilationResponse, program, &errors, clientSocket);
+	if (!prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket)) return false;
 	sendCompilationResponse(&compilationResponse, &errors, clientSocket);
 
 	free(errors);
-	sclose(clientSocket);
+	return true;
 }
 
 
-void prepareCompilationResponse(CompilationResponse* compilationResponse, Programm* program, char** errors, int clientSocket) {
+bool prepareCompilationResponse(Programm* program, CompilationResponse* compilationResponse, char** errors, int clientSocket) {
 	char* inputPath;
-	getProgPath(program->programmeID, &inputPath, "c");
+	if (getProgramPath(program->programmeID, &inputPath, "c")) return false;
 	char* outputPath;
-	getProgPath(program->programmeID, &outputPath, "out");
+	if (getProgramPath(program->programmeID, &outputPath, "out")) return false;
 	//write into program file source
 	int fd = sopen(inputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
  	readThenWrite(clientSocket, fd);
@@ -210,8 +243,9 @@ void prepareCompilationResponse(CompilationResponse* compilationResponse, Progra
 	free(outputPath);
 
 	if (exitCode != 0) {
-		//TODO update hasError from shared memory
+		program->hasError = true;
 	}
+	return true;
 }
 
 
@@ -234,31 +268,4 @@ void sendCompilationResponse(CompilationResponse* compilationResponse, char** er
 	swrite(clientSocket, compilationResponse, sizeof(compilationResponse));
 	swrite(clientSocket, *errors, strlen(*errors) * sizeof(char));
 	sshutdown(clientSocket, SHUT_WR);
-}
-
-
-
-
-
-//TODO get from shared memory or NULL if does not exist
-void getProgram(Programm* program, int programId) {
-	if ((program = (Programm*)malloc(sizeof(Programm))) == NULL) {
-		printf("Allocation dynamique de program impossible");
-		return NULL;
-	}
-	program->programmeID = programId;
-	program->fichierSource = "helloWorld.c";
-	program->hasError = false;
-	program->nombreExcecutions = 0;
-	program->tempsExcecution = 0;
-}
-
-
-void getProgPath(int programId, char** path, char* extension) {
-	int size = strlen(BASE_PROG_PATH) + MAX_STRING_SIZE_INT + strlen(extension);
-	if ((*path = (char*)malloc(size*sizeof(char))) == NULL) {
-		printf("Allocation dynamique de path impossible");
-		return NULL;
-	}
-	sprintf(*path, "%s%d.%s", BASE_PROG_PATH, programId, extension);
 }

@@ -518,13 +518,6 @@ void sshutdown(int sockfd, int how) {
   checkNeg(res, "ERROR shutdown");
 }
 
-
-void overwriteFromInputIntoClosedOutput(int input, char* outputPath) {
-  int fd = sopen(outputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
-  readThenWrite(input, fd);
-  sclose(fd);
-}
-
 void readThenWrite(int infd, int outfd) {
   char buff[BUFFER_SIZE];
   int nbRd;
@@ -544,7 +537,7 @@ void getStringFromInput(char** string, int inputFile) {
 
   if ((*string = (char*)malloc(physicalSize*sizeof(char))) == NULL) {
     perror("Allocation dynamique de string impossible");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
   do {
     char buffer[BUFFER_SIZE];
@@ -552,8 +545,10 @@ void getStringFromInput(char** string, int inputFile) {
     //if not enough space in string then realloc
     if (physicalSize - sizeRead - logicalSize < 0) {
       physicalSize *= 2;
-      if ((*string = (char*)realloc(*string, physicalSize*sizeof(char))) == NULL)
-        return perror("Allocation dynamique de string impossible");
+      if ((*string = (char*)realloc(*string, physicalSize*sizeof(char))) == NULL) {
+        perror("Allocation dynamique de string impossible");
+        exit(EXIT_FAILURE);
+      }
     }
     if (sizeRead > 0)
       strcat(*string, buffer);

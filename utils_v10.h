@@ -356,9 +356,6 @@ int initSocketClient(const char* serverIp, const int serverPort);
 
 void sshutdown(int sockfd, int how);
 
-
-void overwriteFromInputIntoClosedOutput(int input, char* outputPath);
-
 // reads one file descriptor, and writes into another
 void readThenWrite(int infd, int outfd);
 
