@@ -366,5 +366,3 @@ void readThenWrite(int infd, int outfd);
 void getStringFromInput(char** tab, int inputFile);
 
 #endif  // _UTILS_H_
-
-
