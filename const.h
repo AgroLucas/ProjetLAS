@@ -10,6 +10,17 @@
 #define SEMA_KEY  5
 #define SHAREDMEM_KEY  6
 
+#define EXECUTION_VALUE -2
+#define ADD_VALUE -1
+
+
+typedef enum {
+	NOT_EXIST = -2,
+	NOT_COMPILE =1,
+	WRONG_EXECUTION = 0,
+	GOOD_EXECUTION = 1
+} ProgramState;
+
 
 typedef struct {
 	int programmeID;
@@ -35,7 +46,7 @@ typedef struct {
 
 typedef struct {
 	int n;
-	int programState;
+	ProgramState programState;
 	int executionTime;
 	int exitCode;
 } ExecuteResponse;
