@@ -7,7 +7,7 @@
 #include "../const.h"
 
 #define PERM 0666
-#define SHAREDMEMSIZE sizeof(int) + 1000 * sizeof(struct Programme)
+#define SHAREDMEMSIZE sizeof(int) + 1000 * sizeof(struct Programm)
 
 int createSharedMemory(key_t key)
 {

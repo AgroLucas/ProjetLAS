@@ -11,7 +11,7 @@
 #define SHAREDMEM_KEY  6
 
 
-typedef struct Programme {
+typedef struct {
 	int programmeID;
 	char* fichierSource;
 	bool hasError;
