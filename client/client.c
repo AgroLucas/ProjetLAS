@@ -60,6 +60,11 @@ int main(int argc, char *argv[])
 	int pipefd[2];
 	spipe(pipefd);
 
+	sigset_t set;
+	ssigemptyset(&set);
+	ssigaddset(&set, SIGUSR1);
+	ssigprocmask(SIG_BLOCK, &set, NULL);
+
 	int reccurPid = fork_and_run3(runReccurChild, pipefd, addr, &port);
 	int clockPid = fork_and_run2(runClockChild, pipefd, &delay);
 	sclose(pipefd[0]);
@@ -110,14 +115,14 @@ bool killChildren(int clockPid, int reccurPid) {
 	while(clock_kill_receipt == 0) {
 		// wait
 	}
-	printf("(P) clock kill receipt\n");
+	printf("(Parent) clock kill receipt\n");
 
 	ssigaction(SIGCHLD, reccurSigchldHandler);
 	skill(reccurPid, SIGUSR1);
 	while(reccur_kill_receipt == 0) {
 		// wait
 	}
-	printf("(P) reccur kill receipt\n");
+	printf("(Parent) reccur kill receipt\n");
 	return EXIT_SUCCESS;
 }
 
@@ -213,11 +218,17 @@ void execProgReccur(int progNum, int* pipefd) {
 //	=== Child functions ===
 // reccurent execution child
 void runReccurChild(void* arg1, void* arg2, void* arg3) {
-	printf("reccur created\n");
 	int* pipefd = arg1;
 	char* addr = arg2;
 	int* port = arg3;
+
 	ssigaction(SIGUSR1, reccurSigusr1Handler);
+
+	sigset_t set;
+	ssigemptyset(&set);
+	ssigaddset(&set, SIGUSR1);
+	ssigprocmask(SIG_UNBLOCK, &set, NULL);
+
 	int* execTable = (int*) malloc(RECCUR_TABLE_START_SIZE * sizeof(int));
 	int lSize = 0;
 	int pSize = RECCUR_TABLE_START_SIZE;
@@ -258,7 +269,14 @@ void runClockChild(void* arg1, void* arg2) {
 	printf("clock created\n");
 	int* pipefd = arg1;
 	int* delay = arg2;
-	ssigaction(SIGUSR1, clockSigusr1Handler);
+
+	ssigaction(SIGUSR1, clockSigusr1Handler); 
+	
+	sigset_t set;
+	ssigemptyset(&set);
+	ssigaddset(&set, SIGUSR1);
+	ssigprocmask(SIG_UNBLOCK, &set, NULL); 
+
 	sclose(pipefd[0]);
 	pid_t pidParent = getppid();
 	while(terminate_clock == 0) {
