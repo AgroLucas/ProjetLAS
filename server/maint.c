@@ -6,6 +6,7 @@
 
 #include "servConst.h"
 
+struct Programm *tableau[1000] ;
 
 int createSharedMemory(key_t key)
 {
@@ -27,6 +28,7 @@ int main(int argc, char **argv)
     {
     case 1: //crée les ressources
         sharedMemID = createSharedMemory(SHAREDMEM_KEY);
+        *tableau = sshmat(sharedMemID);
         semaID = sem_create(SEMA_KEY, 1, IPC_CREAT | PERM, 1);
         break;
 
