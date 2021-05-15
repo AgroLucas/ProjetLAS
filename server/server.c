@@ -27,7 +27,7 @@
 
 void requestHandler(void* arg1);
 
-bool createEmptyProgram(Programm* program, char* progName);
+bool createEmptyProgram(Programm** program, char* progName);
 int getFreeIdNumber();
 
 bool getProgram(Programm* program, int programId);
@@ -50,6 +50,7 @@ void compileAndGetErrors(void* arg1, void* arg2, void* arg3);
 
 
 int main(int argc, char **argv) {
+	//TODO check path
 	if (argc != 2) {
 		perror("Usage : ./server/server [port]\n");
 		exit(EXIT_FAILURE);
@@ -74,10 +75,14 @@ void requestHandler(void* arg1) {
 	sread(*clientSocket, &request, sizeof(request));
 
 	Programm* program;
-	bool isProgramAllocated = (request.firstInt == ADD_VALUE) ? createEmptyProgram(program, request.progName) : getProgram(program, request.firstInt);
-	if (isProgramAllocated) {
-		(request.firstInt == EXECUTION_VALUE) ? executionHandler(program, request.secondInt, *clientSocket) : compilationHandler(program, *clientSocket);
-		free(program);
+	if (request.firstInt == EXECUTION_VALUE) {
+		getProgram(program, request.secondInt);
+		if (executionHandler(program, request.secondInt, *clientSocket))
+			free(program);
+	} else {
+		getProgram(program, request.firstInt);
+		if (compilationHandler(program, *clientSocket))
+			free(program);
 	}
 
 	sclose(*clientSocket);
@@ -86,63 +91,78 @@ void requestHandler(void* arg1) {
 
 
 
-bool createEmptyProgram(Programm* program, char* progName) {
-	if ((program = (Programm*)malloc(sizeof(Programm))) == NULL) {
+bool createEmptyProgram(Programm** program, char* progName) {
+	if ((*program = (Programm*)malloc(sizeof(Programm))) == NULL) {
 		perror("Allocation dynamique de program impossible");
 		return false;
 	}
-	program->programmeID = getFreeIdNumber();
-	program->fichierSource = progName;
-	program->hasError = false;
-	program->nombreExcecutions = 0;
-	program->tempsExcecution = 0;
+	(*program)->programmeID = getFreeIdNumber();
+	(*program)->fichierSource = progName;
+	(*program)->hasError = false;
+	(*program)->nombreExcecutions = 0;
+	(*program)->tempsExcecution = 0;
+
 	return true;
 }
 
 
 int getFreeIdNumber() {
-   /* int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
-    void *sharedMemory = sshmat(sharedMemID);
-	return *sharedMemory;*/
-	return 0;
-}
-
-//TODO get from shared memory or NULL if does not exist
-bool getProgram(Programm* program, int programId) {
-
-   /* int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
-    printf("test\n");
+   	int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
-    printf("test\n");
-    Programm *tab = sshmat(sharedMemID);
-    printf("test\n");
-
     sem_down0(semID);
-    printf("test\n");
 
-    printf("<%s>\n", tab[0].fichierSource);
+    void *sharedMemory = sshmat(sharedMemID);
+    int *logicalSize = sharedMemory;
 
     sem_up0(semID);
-  	sshmdt(tab);*/
+  	sshmdt(sshmat(sharedMemID));
+	return *logicalSize++;
+}
 
 
-	if ((program = (Programm*)malloc(sizeof(Programm))) == NULL) {
-		perror("Allocation dynamique de program impossible");
-		return false;
-	}
-	program->programmeID = programId;
-	program->fichierSource = "helloWorld.c";
-	program->hasError = false;
-	program->nombreExcecutions = 0;
-	program->tempsExcecution = 0;
+bool getProgram(Programm* program, int programId) {
+	printf("test\n");
+	printf("%d\n", programId);
+	if (programId < 0) return false;
+	printf("test\n");
+
+    int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
+    int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
+    sem_down0(semID);
+
+    void *sharedMemory = sshmat(sharedMemID);
+    int *logicalSize = sharedMemory;
+    if (programId >= *logicalSize) {
+        perror("id du programme invalide");
+	    sem_up0(semID);
+	  	sshmdt(sharedMemory);
+        return false;
+    }
+    Programm* tab = sizeof(int) + sharedMemory;
+    program = &(tab[programId]);
+
+    sem_up0(semID);
+  	sshmdt(sshmat(sharedMemID));
+	printf("test\n");
 	return true;
 }
 
-//TODO save program into shared memory
-void setProgram(Programm* program) {
-    /*int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
-    void *sharedMemory = sshmat(sharedMemID);*/
 
+void setProgram(Programm* program) {
+	printf("test\n");
+	int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
+    int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
+    sem_down0(semID);
+
+    void *sharedMemory = sshmat(sharedMemID);
+    int *logicalSize = sharedMemory;
+
+    Programm* tab = sizeof(int) + sharedMemory;
+    tab[program->programmeID] = *program;
+
+    sem_up0(semID);
+  	sshmdt(sshmat(sharedMemID));
+	printf("test\n");
 }
 
 
@@ -239,11 +259,8 @@ void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int cl
 bool compilationHandler(Programm* program, int clientSocket) {
 	CompilationResponse compilationResponse = {program->programmeID, 0};
 	char* errors;
-
 	if (!prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket)) return false;
-	
 	setProgram(program);
-
 	sendCompilationResponse(&compilationResponse, &errors, clientSocket);
 
 	free(errors);
@@ -253,9 +270,9 @@ bool compilationHandler(Programm* program, int clientSocket) {
 
 bool prepareCompilationResponse(Programm* program, CompilationResponse* compilationResponse, char** errors, int clientSocket) {
 	char* inputPath;
-	if (getProgramPath(program->programmeID, &inputPath, "c")) return false;
+	if (!getProgramPath(program->programmeID, &inputPath, "c")) return false;
 	char* outputPath;
-	if (getProgramPath(program->programmeID, &outputPath, "out")) return false;
+	if (!getProgramPath(program->programmeID, &outputPath, "out")) return false;
 	//write into program file source
 	int fd = sopen(inputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
  	readThenWrite(clientSocket, fd);
