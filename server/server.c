@@ -74,12 +74,13 @@ void requestHandler(void* arg1) {
 
 	Programm* program;
 	bool isProgramAllocated = (request.firstInt == ADD_VALUE) ? createEmptyProgram(program, request.progName) : getProgram(program, request.firstInt);
-	if (isProgramAllocated)
+	if (isProgramAllocated) {
 		(request.firstInt == EXECUTION_VALUE) ? executionHandler(program, request.secondInt, *clientSocket) : compilationHandler(program, *clientSocket);
+		//TODO update program on shared memory if needed only
 
-	//TODO update program on shared memory if needed only
+		free(program);
+	}
 
-	free(program);
 	sclose(*clientSocket);
 }
 
@@ -144,7 +145,7 @@ bool executionHandler(Programm* program, int programId, int clientSocket) {
 
 	if (!prepareExecuteResponse(program, &executeResponse, &stdout)) return false;
 
-	if (programm->programState == GOOD_EXECUTION || programm->programState == WRONG_EXECUTION)
+	if (executeResponse.programState == GOOD_EXECUTION || executeResponse.programState == WRONG_EXECUTION)
 		setProgram(program);
 
 	sendExecuteResponse(&executeResponse, &stdout, clientSocket);
