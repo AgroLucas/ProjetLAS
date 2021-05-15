@@ -10,7 +10,7 @@
 
 #include "servConst.h"
 #include "../utils_v10.h"
-#include "../const.h"
+
 
 
 int main(int argc, char **argv)
@@ -29,14 +29,14 @@ int main(int argc, char **argv)
 
     int noSemaphore = 1;
     //SEMA_KEY et SHAREDMEM_KEY definies dans const.h
-    int semaID = sem_get(SEMA_KEY, noSemaphore);
+    int semaID = sem_get(SEMA_KEY, NO_SEMAPHORE);
     //va chercher la sharedMem avec une perm de 0 car on ne fait que la rechercher
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     //return la sharedMem
     void *sharedMemory = sshmat(sharedMemID);
     //donne la taille de la sharedMem
     int *tailleLogique = sharedMemory;
-    //pointe vers une structure contenue dans sharedMem
+    //pointe vers une structure contenue dans sharedMem au bon indice
     Programm *tab = sizeof(int) + sharedMemory;
     //lock les ressources
     sem_down0(semaID);
