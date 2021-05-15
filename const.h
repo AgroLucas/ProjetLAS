@@ -15,6 +15,12 @@ typedef struct {
 	int exitCode;
 } CompilationResponse;
 
+typedef struct {
+	int n;
+	ProgramState programState;
+	int executionTime;
+	int exitCode;
+} ExecuteResponse;
 
 #endif
 
