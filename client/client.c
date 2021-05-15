@@ -56,10 +56,9 @@ void clockSIGUSR1Handler(int sig);
 //	=== main ===
 
 /*
-*Expected arguments : IP_address, port, delay(sec)
+*Arguments : IP_address, port, delay(sec)
 */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	if(argc != 4) {
 		perror("Nombre d'arguments invalide.");
 		exit(EXIT_FAILURE);
@@ -222,6 +221,7 @@ bool verifyChar(char* queryArg) {
 	if(strlen(queryArg) != 1)
 		return false;
 }
+
 //	=== Server Request functions ===
 
 void addProg(char* addr, int port, char* filePath) {
@@ -298,6 +298,7 @@ void execProgReccur(int progNum, int* pipefd) {
 }
 
 //	=== Child functions ===
+
 // reccurent execution child
 void runReccurChild(void* arg1, void* arg2, void* arg3) {
 	int* pipefd = arg1;
