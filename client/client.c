@@ -25,11 +25,11 @@ volatile sig_atomic_t reccur_kill_receipt = 0;
 *POST: 	SIGUSR1 signal are send to both children, shuting them down.
 *RET:	Boolean (true = successful shutdown)
 */
-bool killChildren();
+bool killChildren(int, int);
 void clockSigchldHandler(int sig);
 void reccurSigchldHandler(int sig);
-void runReccurChild(int* pipefd);
-void runClockChild(int* pipefd);
+void runReccurChild(void* arg1);
+void runClockChild(void* arg1, void* arg2);
 
 /**
 *PRE:	query is an array of char* (length = MAX_QUERY_ARGS)
@@ -64,8 +64,8 @@ int main(int argc, char const *argv[])
 	int pipefd[2];
 	spipe(pipefd);
 
-	//int fork_and_run1(runReccurChild, pipefd);
-	//fork_and_run1(runClockChild, pipefd);
+	int reccurPid = fork_and_run1(runReccurChild, pipefd);
+	int clockPid = fork_and_run2(runClockChild, pipefd, &delay);
 	sclose(pipefd[0]);
 
 	bool quit = false;
@@ -102,29 +102,25 @@ int main(int argc, char const *argv[])
 		}
 	}
 	sclose(pipefd[1]);
-	exit(killChildren());
+	exit(killChildren(clockPid, reccurPid));
 }
 
 //	=== Parent Business functions ===
 
 bool killChildren(int clockPid, int reccurPid) {
-	/*
 	ssigaction(SIGCHLD, clockSigchldHandler);
-	skill(SIGUSR1, clockPid);
+	skill(clockPid, SIGUSR1);
 	while(clock_kill_receipt == 0) {
 		// wait
 	}
-	*/
-	printf("clock killed\n");
+	printf("(P) clock kill receipt\n");
 
-	/*
 	ssigaction(SIGCHLD, reccurSigchldHandler);
-	skill(SIGUSR1, reccurPid);
+	skill(reccurPid, SIGUSR1);
 	while(reccur_kill_receipt == 0) {
 		// wait
 	}
-	*/
-	printf("clock killed\n");
+	printf("(P) reccur kill receipt\n");
 	return EXIT_SUCCESS;
 }
 
@@ -212,7 +208,9 @@ void execProgReccur(int progNum) {
 
 //	=== Child functions ===
 // reccurent execution child
-void runReccurChild(int* pipefd) {
+void runReccurChild(void* arg1) {
+	printf("reccur created\n");
+	int* pipefd = arg1;
 	ssigaction(SIGUSR1, reccurSigusr1Handler);
 	
 	sclose(pipefd[1]);
@@ -220,6 +218,7 @@ void runReccurChild(int* pipefd) {
 	while(terminate_recur == 0) {
 
 	}
+	printf("reccur killed\n");
 	sclose(pipefd[0]);
 	skill(pidParent, SIGCHLD);
 }
@@ -229,13 +228,17 @@ void reccurSigusr1Handler(int sig) {
 }
 
 // clock child
-void runClockChild(int* pipefd, int delay) {
+void runClockChild(void* arg1, void* arg2) {
+	printf("clock created\n");
+	int* pipefd = arg1;
+	int* delay = arg2;
 	ssigaction(SIGUSR1, clockSigusr1Handler);
 	sclose(pipefd[0]);
 	pid_t pidParent = getppid();
 	while(terminate_clock == 0) {
 
 	}
+	printf("clock killed\n");
 	sclose(pipefd[1]);
 	skill(pidParent, SIGCHLD);
 }

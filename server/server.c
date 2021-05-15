@@ -144,7 +144,7 @@ bool executionHandler(Programm* program, int programId, int clientSocket) {
 
 	if (!prepareExecuteResponse(program, &executeResponse, &stdout)) return false;
 
-	if (programm->programState == GOOD_EXECUTION || programm->programState == WRONG_EXECUTION)
+	if (executeResponse.programState == GOOD_EXECUTION || executeResponse.programState == WRONG_EXECUTION)
 		setProgram(program);
 
 	sendExecuteResponse(&executeResponse, &stdout, clientSocket);
