@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -20,9 +21,8 @@ volatile sig_atomic_t reccur_kill_receipt = 0;
 /*
 *PRE: 	child process are running.
 *POST: 	SIGUSR1 signal are send to both children, all children process are terminated.
-*RET:	Boolean (true = successful shutdown)
 */
-bool killChildren(int, int);
+void killChildren(int, int);
 
 //signal handlers (parent)
 void clockSIGCHLDHandler(int sig);
@@ -36,6 +36,12 @@ void runClockChild(void* arg1, void* arg2); //
 *POST:	A line is read on stdin. query is filled with char* (each entry in the query array has to be freed)
 */
 void readQuery(char**);
+
+bool isValidQuery(char**);
+
+bool verifyText(char*);
+bool verifyInt(char*);
+bool verifyChar(char*); 
 
 // server request methods
 void addProg(char*, int, char*);
@@ -79,56 +85,58 @@ int main(int argc, char *argv[])
 		char* query[MAX_QUERY_ARGS];
 		printf("Entrez une commande: \n");
 		readQuery(query);
-		char queryType = query[0][0];
-		int progNum;
-		char* filePath;
-		switch(queryType) {
-			case 'q':
-				quit = true;
-				break;
-			case '+':
-				filePath = query[1];
-				addProg(addr, port, filePath);
-				break;
-			case '.':
-				progNum = atoi(query[1]);
-				filePath = query[2];
-				replaceProg(addr, port, progNum, filePath);
-				break;
-			case '*':
-				progNum = atoi(query[1]);
-				execProgReccur(progNum, pipefd);
-				break;
-			case '@':
-				progNum = atoi(query[1]);
-				execProgOnce(addr, port, progNum);
-				break;
+		if(isValidQuery(query)){
+			char queryType = query[0][0];
+			int progNum;
+			char* filePath;
+			switch(queryType) {
+				case 'q':
+					quit = true;
+					break;
+				case '+':
+					filePath = query[1];
+					addProg(addr, port, filePath);
+					break;
+				case '.':
+					progNum = atoi(query[1]);
+					filePath = query[2];
+					replaceProg(addr, port, progNum, filePath);
+					break;
+				case '*':
+					progNum = atoi(query[1]);
+					execProgReccur(progNum, pipefd);
+					break;
+				case '@':
+					progNum = atoi(query[1]);
+					execProgOnce(addr, port, progNum);
+					break;
+			}
+		}else {
+			printf("Commande invalide!");
 		}
 		for(int i=0; i<MAX_QUERY_ARGS; i++) {
 			free(query[i]);
 		}
 	}
 	sclose(pipefd[1]);
-	exit(killChildren(clockPid, reccurPid));
+	killChildren(clockPid, reccurPid);
+	exit(EXIT_SUCCESS);
 }
 
 //	=== Parent Business functions ===
 
-bool killChildren(int clockPid, int reccurPid) {
+void killChildren(int clockPid, int reccurPid) {
 	ssigaction(SIGCHLD, clockSIGCHLDHandler);
 	skill(clockPid, SIGUSR1);
 	while(clock_kill_receipt == 0) {
 		// wait
 	}
-	printf("(Parent) clock kill receipt\n");
 
 	ssigaction(SIGCHLD, reccurSIGCHLDHandler);
 	skill(reccurPid, SIGUSR1);
 	while(reccur_kill_receipt == 0) {
 		// wait
 	}
-	printf("(Parent) reccur kill receipt\n");
-	return EXIT_SUCCESS;
 }
 
 void clockSIGCHLDHandler(int sig) {
@@ -138,6 +146,7 @@ void clockSIGCHLDHandler(int sig) {
 void reccurSIGCHLDHandler(int sig) {
 	reccur_kill_receipt = 1;
 }
+
 
 void readQuery(char** query) {
 	char buffRd[QUERY_BUFF_SIZE];
@@ -160,6 +169,58 @@ void readQuery(char** query) {
 	}
 }
 
+bool isValidQuery(char** query) {
+	if(!verifyChar(query[0]))
+		return false;
+	switch(query[0][0]) {
+		case 'q':
+		break;
+		case '+':
+			if(!verifyText(query[1])) 
+				return false;
+		break;
+		case '.':
+			if(!verifyInt(query[1])) 
+				return false;
+			if(!verifyText(query[2])) 
+				return false;
+		break;
+		case '*':
+		case '@':
+			if(!verifyInt(query[1])) 
+				return false;
+		break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+bool verifyText(char* queryArg) {
+	if(queryArg == NULL)
+		return false;
+	if(strlen(queryArg) == 0)
+		return false;
+	return true;
+}
+
+bool verifyInt(char* queryArg) {
+	if(!verifyText(queryArg))
+		return false;
+	for(int i=0; i<strlen(queryArg); i++) {
+		char c = queryArg[i];
+		if(!isdigit(c))
+			return false;
+	}
+	return true;
+}
+
+bool verifyChar(char* queryArg) {
+	if(!verifyText(queryArg))
+		return false;
+	if(strlen(queryArg) != 1)
+		return false;
+}
 //	=== Server Request functions ===
 
 void addProg(char* addr, int port, char* filePath) {
@@ -211,9 +272,22 @@ void execProgOnce(char* addr, int port, int progNum) {
 	checkNeg(
 		sread(sockfd, &eResponse, sizeof(ExecuteResponse)),
 		"Error reading ExecuteResponse");
-	//TODO switch on eResponse.programState
-	printf("Exec. program no. %d.\nTemps d'exécution: %d\nCode de sortie: %d", 
-		progNum, eResponse.executionTime, eResponse.exitCode);
+	switch(eResponse.programState) {
+		case NOT_EXIST:
+			printf("Le programme no. %d n'existe pas!\n", progNum);
+			break;
+		case NOT_COMPILE:
+			printf("Le programme no. %d a renvoyé une erreur à la compilation!\n", progNum);
+			break;
+		case WRONG_EXECUTION:
+			printf("Le programme no. %d a renvoyé une erreur à l'exécution.\nTemps d'exécution: %d\nCode de sortie: %d\n", 
+					progNum, eResponse.executionTime, eResponse.exitCode);
+			break;
+		case GOOD_EXECUTION:
+			printf("Le programme no. %d s'est exécuté correctement.\nTemps d'exécution: %d\nCode de sortie: %d\n", 
+				progNum, eResponse.executionTime, eResponse.exitCode);
+			break;
+	}
 	readThenWrite(sockfd, STDOUT_FILENO);
 	sclose(sockfd);
 }
@@ -263,7 +337,6 @@ void runReccurChild(void* arg1, void* arg2, void* arg3) {
 			lSize++;
 		}
 	}
-	printf("reccur killed\n");
 	sclose(pipefd[0]);
 	free(execTable);
 	skill(pidParent, SIGCHLD);
@@ -275,7 +348,6 @@ void reccurSIGUSR1Handler(int sig) {
 
 // clock child
 void runClockChild(void* arg1, void* arg2) {
-	printf("clock created\n");
 	int* pipefd = arg1;
 	int* delay = arg2;
 	sclose(pipefd[0]);
@@ -293,7 +365,6 @@ void runClockChild(void* arg1, void* arg2) {
 		Message msg = {CLOCK_TICK, 0};
 		swrite(pipefd[1], &msg, sizeof(Message));
 	}
-	printf("clock killed\n");
 	sclose(pipefd[1]);
 	skill(pidParent, SIGCHLD);
 }

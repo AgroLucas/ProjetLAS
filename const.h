@@ -6,7 +6,7 @@
 
 typedef enum {
 	NOT_EXIST = -2,
-	NOT_COMPILE = 1,
+	NOT_COMPILE = -1,
 	WRONG_EXECUTION = 0,
 	GOOD_EXECUTION = 1
 } ProgramState;
