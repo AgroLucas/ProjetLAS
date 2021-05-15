@@ -26,4 +26,9 @@ typedef struct {
 	int tempsExcecution;
 } Programm;
 
+typedef struct {
+	int logicalSize;
+	Program* programTab[NBR_PROGS];
+} SharedMemoryContent;
+
 #endif

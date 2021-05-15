@@ -123,7 +123,6 @@ int getFreeIdNumber() {
 
 
 bool getProgram(Programm* program, int programId) {
-	printf("%d\n", programId);
 	if (programId < 0) return false;
 
     int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
@@ -160,7 +159,6 @@ void setProgram(Programm* program, bool isNew) {
 
     Programm* tab = sizeof(int) + sharedMemory;
     tab[program->programmeID] = *program;
-    sharedMemory = tab
 
     sem_up0(semID);
   	sshmdt(sshmat(sharedMemID));
