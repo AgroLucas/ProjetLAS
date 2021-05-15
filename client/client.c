@@ -83,7 +83,8 @@ int main(int argc, char *argv[])
 	bool quit = false;
 	while(!quit) {
 		char* query[MAX_QUERY_ARGS];
-		printf("Entrez une commande: \n");
+		const char* msg = "> ";
+		nwrite(STDOUT_FILENO, msg, strlen(msg));
 		readQuery(query);
 		if(isValidQuery(query)){
 			char queryType = query[0][0];
@@ -112,7 +113,7 @@ int main(int argc, char *argv[])
 					break;
 			}
 		}else {
-			printf("Commande invalide!");
+			printf("Commande invalide!\n");
 		}
 		for(int i=0; i<MAX_QUERY_ARGS; i++) {
 			free(query[i]);
@@ -224,7 +225,6 @@ bool verifyChar(char* queryArg) {
 //	=== Server Request functions ===
 
 void addProg(char* addr, int port, char* filePath) {
-	printf("add prog '%s'\n", filePath);
 	replaceProg(addr, port, -1, filePath);
 }
 
@@ -248,12 +248,11 @@ void replaceProg(char* addr, int port, int progNum, char* filePath) {
 		"Error reading CompilationResponse");
 
 	if(progNum == -1){
-		printf("Add Program :\n");
+		printf("Ajout du programme ");
 	} else {
-		printf("Replace Program :\n");
+		printf("Remplacement du programme ");
 	}
-
-	printf("Program no. %d\nExit code: %d\nEventual error msg: \n",
+	printf("no. %d\nExit code: %d\nMessages d'erreur éventuels: \n",
 		cResponse.n, cResponse.exitCode);
 	
 	readThenWrite(sockfd, STDOUT_FILENO);
@@ -293,7 +292,7 @@ void execProgOnce(char* addr, int port, int progNum) {
 }
 
 void execProgReccur(int progNum, int* pipefd) {
-	printf("add prog num. %d to reccurent programs\n", progNum);
+	printf("Exécution récurente du programme no. %d\n", progNum);
 	Message msg = {ADD_RECCUR, progNum};
 	swrite(pipefd[1], &msg, sizeof(Message));
 }
