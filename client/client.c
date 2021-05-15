@@ -235,7 +235,7 @@ void runReccurChild(void* arg1, void* arg2, void* arg3) {
 		} else {
 			while(lSize >= pSize) {
 				pSize *= 2;
-				if ((execTable = (type*)realloc(execTable, pSize*sizeof(int))) == NULL) {
+				if ((execTable = (int*)realloc(execTable, pSize*sizeof(int))) == NULL) {
 				    perror("Allocation dynamique de execTable impossible");
 				}
 			}
