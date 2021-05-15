@@ -34,27 +34,25 @@ int main(int argc, char **argv)
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     //return la sharedMem
     void *sharedMemory = sshmat(sharedMemID);
-    //donne la taille de la sharedMem
-    int *tailleLogique = sharedMemory;
-    //pointe vers une structure contenue dans sharedMem au bon indice
-    Programm *tab = sizeof(int) + sharedMemory;
+    SharedMemoryContent* content = sshmat(sharedMemID);
+    Programm** tab = content->programTab;
     //lock les ressources
     sem_down0(semaID);
     //si pas de programme à cet indice là --> erreur
-    if (noProgramme >= *tailleLogique)
+    if (noProgramme >= content->logicalSize)
     {
         printf("programmeID invalide");
         exit(EXIT_FAILURE);
     }
-    printf("%d", tab[noProgramme].programmeID);
-    printf("%s", tab[noProgramme].fichierSource);
-    printf("%s", tab[noProgramme].hasError ? "true" : "false");
-    printf("%d", tab[noProgramme].nombreExcecutions);
-    printf("%d", tab[noProgramme].tempsExcecution);
+    printf("%d", (*tab)[noProgramme].programmeID);
+    printf("%s", (*tab)[noProgramme].fichierSource);
+    printf("%s", (*tab)[noProgramme].hasError ? "true" : "false");
+    printf("%d", (*tab)[noProgramme].nombreExcecutions);
+    printf("%d", (*tab)[noProgramme].tempsExcecution);
 
     // relache la sharedMem
     sshmdt(sshmat(sharedMemID));
     // libère la ressource
     sem_up0(semaID);
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
 }

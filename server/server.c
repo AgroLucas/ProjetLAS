@@ -113,12 +113,11 @@ int getFreeIdNumber() {
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     sem_down0(semID);
 
-    void *sharedMemory = sshmat(sharedMemID);
-    int *logicalSize = sharedMemory;
+    SharedMemoryContent* sharedMemory = sshmat(sharedMemID);
 
-    sem_up0(semID);
   	sshmdt(sshmat(sharedMemID));
-	return *logicalSize;
+    sem_up0(semID);
+	return sharedMemory->logicalSize;
 }
 
 
@@ -129,19 +128,17 @@ bool getProgram(Programm* program, int programId) {
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     sem_down0(semID);
 
-    void *sharedMemory = sshmat(sharedMemID);
-    int *logicalSize = sharedMemory;
-    if (programId >= *logicalSize) {
+    SharedMemoryContent* content = sshmat(sharedMemID);
+    if (programId >= content->logicalSize) {
         perror("id du programme invalide");
 	    sem_up0(semID);
-	  	sshmdt(sharedMemory);
+	  	sshmdt(sshmat(sharedMemID));
         return false;
     }
-    Programm* tab = sizeof(int) + sharedMemory;
-    program = &(tab[programId]);
+    program = content->programTab[programId];
 
-    sem_up0(semID);
   	sshmdt(sshmat(sharedMemID));
+    sem_up0(semID);
 	return true;
 }
 
@@ -151,17 +148,14 @@ void setProgram(Programm* program, bool isNew) {
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     sem_down0(semID);
 
-    void *sharedMemory = sshmat(sharedMemID);
-    int *logicalSize = sharedMemory;
-    if (isNew) {
-    	*logicalSize = (*logicalSize)++;
-    }
+    SharedMemoryContent* content = sshmat(sharedMemID);
+    if (isNew) 
+    	content->logicalSize++;
 
-    Programm* tab = sizeof(int) + sharedMemory;
-    tab[program->programmeID] = *program;
+    content->programTab[program->programmeID] = program;
 
-    sem_up0(semID);
   	sshmdt(sshmat(sharedMemID));
+    sem_up0(semID);
 }
 
 

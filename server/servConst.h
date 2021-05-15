@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
 	int logicalSize;
-	Program* programTab[NBR_PROGS];
+	Programm* programTab[NBR_PROGS];
 } SharedMemoryContent;
 
 #endif
