@@ -115,14 +115,14 @@ int main(int argc, char *argv[])
 //	=== Parent Business functions ===
 
 bool killChildren(int clockPid, int reccurPid) {
-	ssigaction(SIGCHLD, clockSigchldHandler);
+	ssigaction(SIGCHLD, clockSIGCHLDHandler);
 	skill(clockPid, SIGUSR1);
 	while(clock_kill_receipt == 0) {
 		// wait
 	}
 	printf("(Parent) clock kill receipt\n");
 
-	ssigaction(SIGCHLD, reccurSigchldHandler);
+	ssigaction(SIGCHLD, reccurSIGCHLDHandler);
 	skill(reccurPid, SIGUSR1);
 	while(reccur_kill_receipt == 0) {
 		// wait
@@ -131,11 +131,11 @@ bool killChildren(int clockPid, int reccurPid) {
 	return EXIT_SUCCESS;
 }
 
-void clockSigchldHandler(int sig) {
+void clockSIGCHLDHandler(int sig) {
 	clock_kill_receipt = 1;
 }
 
-void reccurSigchldHandler(int sig) {
+void reccurSIGCHLDHandler(int sig) {
 	reccur_kill_receipt = 1;
 }
 
@@ -234,7 +234,7 @@ void runReccurChild(void* arg1, void* arg2, void* arg3) {
 	sclose(pipefd[1]);
 	pid_t pidParent = getppid();
 
-	ssigaction(SIGUSR1, reccurSigusr1Handler);
+	ssigaction(SIGUSR1, reccurSIGUSR1Handler);
 
 	sigset_t set;
 	ssigemptyset(&set);
@@ -265,7 +265,7 @@ void runReccurChild(void* arg1, void* arg2, void* arg3) {
 	skill(pidParent, SIGCHLD);
 }
 
-void reccurSigusr1Handler(int sig) {
+void reccurSIGUSR1Handler(int sig) {
 	terminate_recur = 1;
 }
 
@@ -277,7 +277,7 @@ void runClockChild(void* arg1, void* arg2) {
 	sclose(pipefd[0]);
 	pid_t pidParent = getppid();
 
-	ssigaction(SIGUSR1, clockSigusr1Handler); 
+	ssigaction(SIGUSR1, clockSIGUSR1Handler); 
 
 	sigset_t set;
 	ssigemptyset(&set);
@@ -294,6 +294,6 @@ void runClockChild(void* arg1, void* arg2) {
 	skill(pidParent, SIGCHLD);
 }
 
-void clockSigusr1Handler(int sig) {
+void clockSIGUSR1Handler(int sig) {
 	terminate_clock = 1;
 }
