@@ -24,7 +24,6 @@ int main(int argc, char **argv)
     int type = atoi(argv[1]);
     int sharedMemID;
     int semaID;
-    int noSemaphore = 1; //bonne valeur ?
 
     switch (type)
     {
@@ -36,7 +35,7 @@ int main(int argc, char **argv)
     case 2: //détruit les ressources
         sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
         sshmdelete(sharedMemID);
-        semaID = sem_get(SEMA_KEY, noSemaphore);
+        semaID = sem_get(SEMA_KEY, NO_SEMAPHORE);
         sem_delete(semaID);
         break;
 
@@ -44,7 +43,7 @@ int main(int argc, char **argv)
         checkCond(argc != 3, "la durée de recurrence n'est pas définie\n");
         int duration = atoi(argv[2]);
         checkCond(duration <= 0, "la duree ne peut pas etre negative ou nulle\n");
-        semaID = sem_get(SEMA_KEY, noSemaphore);
+        semaID = sem_get(SEMA_KEY, NO_SEMAPHORE);
         sem_down0(semaID);
         sleep(duration);
         sem_up0(semaID);
