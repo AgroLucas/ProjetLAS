@@ -8,18 +8,15 @@
 #define PERM 0666
 #define SEMA_KEY  5
 #define SHAREDMEM_KEY  6
+#define NBR_PROGS 1000
+//sharedMem 2 en 1 --> indice du tableau + structure associée
+// aka int + taille de la structure * nbre de structures existantes
+#define SHAREDMEMSIZE sizeof(int) + 1000 * sizeof(Programm)
 
 #define EXECUTION_VALUE -2
 #define ADD_VALUE -1
 
 #define NO_SEMAPHORE 1
-
-typedef enum {
-	NOT_EXIST = -2,
-	NOT_COMPILE = 1,
-	WRONG_EXECUTION = 0,
-	GOOD_EXECUTION = 1
-} ProgramState;
 
 typedef struct {
 	int programmeID;

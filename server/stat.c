@@ -8,15 +8,10 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 
+#include "servConst.h"
 #include "../utils_v10.h"
 #include "../const.h"
 
-#define NBR_PROGS 1000
-
-#define PERM 0666
-//sharedMem 2 en 1 --> indice du tableau + structure associée
-// aka int + taille de la structure * nbre de structures existantes
-#define SHAREDMEMSIZE sizeof(int) + 1000 * sizeof(struct Programm)
 
 int main(int argc, char **argv)
 {
@@ -41,7 +36,7 @@ int main(int argc, char **argv)
     //donne la taille de la sharedMem
     int *tailleLogique = sharedMemory;
     //pointe vers une structure contenue dans sharedMem
-    struct Programm *tab = sharedMemory + sizeof(int);
+    Programm *tab = sharedMemory + sizeof(int);
     //lock les ressources
     sem_down0(semaID);
     //si pas de programme à cet indice là --> erreur

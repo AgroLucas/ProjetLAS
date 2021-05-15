@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "servConst.h"
 #include "../utils_v10.h"
 #include "../const.h"
 
@@ -76,8 +77,6 @@ void requestHandler(void* arg1) {
 	bool isProgramAllocated = (request.firstInt == ADD_VALUE) ? createEmptyProgram(program, request.progName) : getProgram(program, request.firstInt);
 	if (isProgramAllocated) {
 		(request.firstInt == EXECUTION_VALUE) ? executionHandler(program, request.secondInt, *clientSocket) : compilationHandler(program, *clientSocket);
-		//TODO update program on shared memory if needed only
-
 		free(program);
 	}
 
@@ -101,13 +100,32 @@ bool createEmptyProgram(Programm* program, char* progName) {
 }
 
 
-//TODO return number of progs in shared memory
 int getFreeIdNumber() {
+   /* int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
+    void *sharedMemory = sshmat(sharedMemID);
+	return *sharedMemory;*/
 	return 0;
 }
 
 //TODO get from shared memory or NULL if does not exist
 bool getProgram(Programm* program, int programId) {
+
+   /* int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
+    printf("test\n");
+    int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
+    printf("test\n");
+    Programm *tab = sshmat(sharedMemID);
+    printf("test\n");
+
+    sem_down0(semID);
+    printf("test\n");
+
+    printf("<%s>\n", tab[0].fichierSource);
+
+    sem_up0(semID);
+  	sshmdt(tab);*/
+
+
 	if ((program = (Programm*)malloc(sizeof(Programm))) == NULL) {
 		perror("Allocation dynamique de program impossible");
 		return false;
@@ -122,6 +140,8 @@ bool getProgram(Programm* program, int programId) {
 
 //TODO save program into shared memory
 void setProgram(Programm* program) {
+    /*int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
+    void *sharedMemory = sshmat(sharedMemID);*/
 
 }
 

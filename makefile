@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-std=c11 -pedantic -Wall -Wvla -Werror -D_POSIX_C_SOURCE
-ALL = server/server client/client #server/maint server/stat
+ALL = server/server client/client  server/maint server/stat
 
 all: $(ALL)
 

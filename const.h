@@ -3,6 +3,14 @@
 
 #define MAX_PROG_NAME 255
 
+
+typedef enum {
+	NOT_EXIST = -2,
+	NOT_COMPILE = 1,
+	WRONG_EXECUTION = 0,
+	GOOD_EXECUTION = 1
+} ProgramState;
+
 typedef struct {
 	int firstInt;						//-1 if to add  numProg if to modify  -2 if to execute
 	int secondInt;						//path length if to add/modify  numProg if to execute
