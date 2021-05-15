@@ -18,13 +18,16 @@ volatile sig_atomic_t reccur_kill_receipt = 0;
 
 
 /*
-*PRE: 	Children process are running.
-*POST: 	SIGUSR1 signal are send to both children, shuting them down.
+*PRE: 	child process are running.
+*POST: 	SIGUSR1 signal are send to both children, all children process are terminated.
 *RET:	Boolean (true = successful shutdown)
 */
 bool killChildren(int, int);
-void clockSigchldHandler(int sig);
-void reccurSigchldHandler(int sig);
+
+//signal handlers (parent)
+void clockSIGCHLDHandler(int sig);
+void reccurSIGCHLDHandler(int sig);
+
 void runReccurChild(void* arg1, void* arg2, void* arg3); //
 void runClockChild(void* arg1, void* arg2); //
 
@@ -34,13 +37,15 @@ void runClockChild(void* arg1, void* arg2); //
 */
 void readQuery(char**);
 
+// server request methods
 void addProg(char*, int, char*);
 void replaceProg(char*, int, int, char*);
 void execProgOnce(char*, int, int);
 void execProgReccur(int progNum, int* pipefd);
 
-void reccurSigusr1Handler(int sig);
-void clockSigusr1Handler(int sig);
+//signal handlers (children)
+void reccurSIGUSR1Handler(int sig);
+void clockSIGUSR1Handler(int sig);
 
 //	=== main ===
 
@@ -222,19 +227,19 @@ void runReccurChild(void* arg1, void* arg2, void* arg3) {
 	char* addr = arg2;
 	int* port = arg3;
 
-	ssigaction(SIGUSR1, reccurSigusr1Handler);
-
-	sigset_t set;
-	ssigemptyset(&set);
-	ssigaddset(&set, SIGUSR1);
-	ssigprocmask(SIG_UNBLOCK, &set, NULL);
-
 	int* execTable = (int*) malloc(RECCUR_TABLE_START_SIZE * sizeof(int));
 	int lSize = 0;
 	int pSize = RECCUR_TABLE_START_SIZE;
 	
 	sclose(pipefd[1]);
 	pid_t pidParent = getppid();
+
+	ssigaction(SIGUSR1, reccurSigusr1Handler);
+
+	sigset_t set;
+	ssigemptyset(&set);
+	ssigaddset(&set, SIGUSR1);
+	ssigprocmask(SIG_UNBLOCK, &set, NULL);
 
 	while(terminate_recur == 0) {
 		Message msg;
@@ -269,16 +274,16 @@ void runClockChild(void* arg1, void* arg2) {
 	printf("clock created\n");
 	int* pipefd = arg1;
 	int* delay = arg2;
+	sclose(pipefd[0]);
+	pid_t pidParent = getppid();
 
 	ssigaction(SIGUSR1, clockSigusr1Handler); 
-	
+
 	sigset_t set;
 	ssigemptyset(&set);
 	ssigaddset(&set, SIGUSR1);
 	ssigprocmask(SIG_UNBLOCK, &set, NULL); 
 
-	sclose(pipefd[0]);
-	pid_t pidParent = getppid();
 	while(terminate_clock == 0) {
 		sleep(*delay);
 		Message msg = {CLOCK_TICK, 0};
