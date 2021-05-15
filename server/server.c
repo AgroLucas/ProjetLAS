@@ -32,7 +32,7 @@ int getFreeIdNumber();
 
 bool getProgram(Programm* program, int programId);
 
-void setProgram(Programm* program);
+void setProgram(Programm* program, bool isNew);
 
 bool getProgramPath(int programId, char**path, char* extension);
 
@@ -80,8 +80,8 @@ void requestHandler(void* arg1) {
 		if (executionHandler(program, request.secondInt, *clientSocket))
 			free(program);
 	} else {
-		getProgram(program, request.firstInt);
-		if (compilationHandler(program, *clientSocket))
+		bool flag = request.firstInt == ADD_VALUE ? createEmptyProgram(&program, request.progName) : getProgram(program, request.firstInt);
+		if (flag && compilationHandler(program, *clientSocket))
 			free(program);
 	}
 
@@ -101,6 +101,8 @@ bool createEmptyProgram(Programm** program, char* progName) {
 	(*program)->hasError = false;
 	(*program)->nombreExcecutions = 0;
 	(*program)->tempsExcecution = 0;
+	setProgram(*program, true);
+
 
 	return true;
 }
@@ -116,15 +118,13 @@ int getFreeIdNumber() {
 
     sem_up0(semID);
   	sshmdt(sshmat(sharedMemID));
-	return *logicalSize++;
+	return *logicalSize;
 }
 
 
 bool getProgram(Programm* program, int programId) {
-	printf("test\n");
 	printf("%d\n", programId);
 	if (programId < 0) return false;
-	printf("test\n");
 
     int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
@@ -143,26 +143,27 @@ bool getProgram(Programm* program, int programId) {
 
     sem_up0(semID);
   	sshmdt(sshmat(sharedMemID));
-	printf("test\n");
 	return true;
 }
 
 
-void setProgram(Programm* program) {
-	printf("test\n");
+void setProgram(Programm* program, bool isNew) {
 	int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     sem_down0(semID);
 
     void *sharedMemory = sshmat(sharedMemID);
     int *logicalSize = sharedMemory;
+    if (isNew) {
+    	*logicalSize = (*logicalSize)++;
+    }
 
     Programm* tab = sizeof(int) + sharedMemory;
     tab[program->programmeID] = *program;
+    sharedMemory = tab
 
     sem_up0(semID);
   	sshmdt(sshmat(sharedMemID));
-	printf("test\n");
 }
 
 
@@ -186,7 +187,7 @@ bool executionHandler(Programm* program, int programId, int clientSocket) {
 	if (!prepareExecuteResponse(program, &executeResponse, &stdout)) return false;
 
 	if (executeResponse.programState == GOOD_EXECUTION || executeResponse.programState == WRONG_EXECUTION)
-		setProgram(program);
+		setProgram(program, false);
 
 	sendExecuteResponse(&executeResponse, &stdout, clientSocket);
 	
@@ -260,7 +261,7 @@ bool compilationHandler(Programm* program, int clientSocket) {
 	CompilationResponse compilationResponse = {program->programmeID, 0};
 	char* errors;
 	if (!prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket)) return false;
-	setProgram(program);
+	setProgram(program, false);
 	sendCompilationResponse(&compilationResponse, &errors, clientSocket);
 
 	free(errors);
@@ -276,7 +277,7 @@ bool prepareCompilationResponse(Programm* program, CompilationResponse* compilat
 	//write into program file source
 	int fd = sopen(inputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
  	readThenWrite(clientSocket, fd);
-	close(fd);
+	sclose(fd);
 	//compile and get errors in variable
 	int pipefd[2];
 	spipe(pipefd);
