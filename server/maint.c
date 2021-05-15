@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     {
     case 1: //crée les ressources
         sharedMemID = createSharedMemory(SHAREDMEM_KEY);
-        semaID = sem_create(SEMA_KEY, 1, IPC_CREAT | PERM, 0);
+        semaID = sem_create(SEMA_KEY, 1, IPC_CREAT | PERM, 1);
         break;
 
     case 2: //détruit les ressources

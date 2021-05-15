@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     //donne la taille de la sharedMem
     int *tailleLogique = sharedMemory;
     //pointe vers une structure contenue dans sharedMem
-    Programm *tab = sharedMemory + sizeof(int);
+    Programm *tab = sizeof(int) + sharedMemory;
     //lock les ressources
     sem_down0(semaID);
     //si pas de programme à cet indice là --> erreur

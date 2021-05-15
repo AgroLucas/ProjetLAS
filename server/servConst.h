@@ -11,7 +11,7 @@
 #define NBR_PROGS 1000
 //sharedMem 2 en 1 --> indice du tableau + structure associée
 // aka int + taille de la structure * nbre de structures existantes
-#define SHAREDMEMSIZE sizeof(int) + 1000 * sizeof(Programm)
+#define SHAREDMEMSIZE sizeof(int) + NBR_PROGS * sizeof(Programm)
 
 #define EXECUTION_VALUE -2
 #define ADD_VALUE -1
