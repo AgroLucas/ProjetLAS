@@ -22,7 +22,7 @@ typedef enum {
 } ProgramState;
 
 
-typedef struct Programme {
+typedef struct {
 	int programmeID;
 	char* fichierSource;
 	bool hasError;
