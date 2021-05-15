@@ -13,14 +13,23 @@
 #define MAX_QUERY_ARG_LENGHT 128
 #define QUERY_BUFF_SIZE 3*MAX_QUERY_ARG_LENGHT
 
+volatile sig_atomic_t terminate_recur = 0;
+volatile sig_atomic_t terminate_clock = 0;
+
+volatile sig_atomic_t clock_kill_receipt = 0;
+volatile sig_atomic_t reccur_kill_receipt = 0;
+
+
 /*
 *PRE: 	Children process are running.
 *POST: 	SIGUSR1 signal are send to both children, shuting them down.
 *RET:	Boolean (true = successful shutdown)
 */
-bool killChildren();
-void runReccurChild(int* pipefd);
-void runClockChild(int* pipefd);
+bool killChildren(int, int);
+void clockSigchldHandler(int sig);
+void reccurSigchldHandler(int sig);
+void runReccurChild(void* arg1);
+void runClockChild(void* arg1, void* arg2);
 
 /**
 *PRE:	query is an array of char* (length = MAX_QUERY_ARGS)
@@ -33,6 +42,10 @@ void replaceProg(const char*, int, int, char*);
 void execProgOnce(const char*, int, int);
 void execProgReccur(int);
 void readThenWrite(int infd, int outfd);
+
+void reccurSigusr1Handler(int sig);
+void clockSigusr1Handler(int sig);
+
 //	=== main ===
 
 /*
@@ -50,10 +63,10 @@ int main(int argc, char const *argv[])
 
 	int pipefd[2];
 	spipe(pipefd);
-	sclose(pipefd[0]);
 
-	//fork_and_run1(runReccurChild, &pipefd);
-	//fork_and_run1(runClockChild, &pipefd);
+	int reccurPid = fork_and_run1(runReccurChild, pipefd);
+	int clockPid = fork_and_run2(runClockChild, pipefd, &delay);
+	sclose(pipefd[0]);
 
 	bool quit = false;
 	while(!quit) {
@@ -89,14 +102,34 @@ int main(int argc, char const *argv[])
 		}
 	}
 	sclose(pipefd[1]);
-	exit(killChildren());
+	exit(killChildren(clockPid, reccurPid));
 }
 
-//	=== Business functions ===
+//	=== Parent Business functions ===
 
-bool killChildren() {
-	printf("shutdownChildren\n");
+bool killChildren(int clockPid, int reccurPid) {
+	ssigaction(SIGCHLD, clockSigchldHandler);
+	skill(clockPid, SIGUSR1);
+	while(clock_kill_receipt == 0) {
+		// wait
+	}
+	printf("(P) clock kill receipt\n");
+
+	ssigaction(SIGCHLD, reccurSigchldHandler);
+	skill(reccurPid, SIGUSR1);
+	while(reccur_kill_receipt == 0) {
+		// wait
+	}
+	printf("(P) reccur kill receipt\n");
 	return EXIT_SUCCESS;
+}
+
+void clockSigchldHandler(int sig) {
+	clock_kill_receipt = 1;
+}
+
+void reccurSigchldHandler(int sig) {
+	reccur_kill_receipt = 1;
 }
 
 void readQuery(char** query) {
@@ -174,11 +207,42 @@ void execProgReccur(int progNum) {
 }
 
 //	=== Child functions ===
-
-void runReccurChild(int* pipefd) {
+// reccurent execution child
+void runReccurChild(void* arg1) {
+	printf("reccur created\n");
+	int* pipefd = arg1;
+	ssigaction(SIGUSR1, reccurSigusr1Handler);
 	
+	sclose(pipefd[1]);
+	pid_t pidParent = getppid();
+	while(terminate_recur == 0) {
+
+	}
+	printf("reccur killed\n");
+	sclose(pipefd[0]);
+	skill(pidParent, SIGCHLD);
 }
 
-void runClockChild(int* pipefd) {
-	
+void reccurSigusr1Handler(int sig) {
+	terminate_recur = 1;
+}
+
+// clock child
+void runClockChild(void* arg1, void* arg2) {
+	printf("clock created\n");
+	int* pipefd = arg1;
+	int* delay = arg2;
+	ssigaction(SIGUSR1, clockSigusr1Handler);
+	sclose(pipefd[0]);
+	pid_t pidParent = getppid();
+	while(terminate_clock == 0) {
+
+	}
+	printf("clock killed\n");
+	sclose(pipefd[1]);
+	skill(pidParent, SIGCHLD);
+}
+
+void clockSigusr1Handler(int sig) {
+	terminate_clock = 1;
 }

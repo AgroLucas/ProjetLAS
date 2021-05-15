@@ -27,8 +27,9 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
+    int noSemaphore = 1;
     //SEMA_KEY et SHAREDMEM_KEY definies dans const.h
-    int semaID = sem_get(SEMA_KEY, NO_SEMAPHORE);
+    int semaID = sem_get(SEMA_KEY, noSemaphore);
     //va chercher la sharedMem avec une perm de 0 car on ne fait que la rechercher
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     //return la sharedMem
