@@ -9,14 +9,14 @@ all: $(ALL)
 client/client : client.o utils_v10.o
 	$(CC) $(CCFLAGS) -o client/client client.o utils_v10.o
 
-client.o : client/client.c utils_v10.h
+client.o : client/client.c utils_v10.h const.h client/clientConst.h
 	$(CC) $(CCFLAGS) -c client/client.c
 
 # server directory
 server/server : server.o utils_v10.o
 	$(CC) $(CCFLAGS) -o server/server server.o utils_v10.o
 
-server.o: server/server.c const.h
+server.o: server/server.c const.h server/servConst.h
 	$(CC) $(CCFLAGS) -c server/server.c
 
 server/maint : maint.o utils_v10.o

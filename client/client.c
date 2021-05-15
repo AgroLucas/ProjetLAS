@@ -8,10 +8,7 @@
 
 #include "../utils_v10.h"
 #include "../const.h"
-
-#define MAX_QUERY_ARGS 3
-#define MAX_QUERY_ARG_LENGHT 128
-#define QUERY_BUFF_SIZE 3*MAX_QUERY_ARG_LENGHT
+#include "clientConst.h"
 
 volatile sig_atomic_t terminate_recur = 0;
 volatile sig_atomic_t terminate_clock = 0;
@@ -28,8 +25,8 @@ volatile sig_atomic_t reccur_kill_receipt = 0;
 bool killChildren(int, int);
 void clockSigchldHandler(int sig);
 void reccurSigchldHandler(int sig);
-void runReccurChild(void* arg1);
-void runClockChild(void* arg1, void* arg2);
+void runReccurChild(void* arg1, void* arg2, void* arg3); //
+void runClockChild(void* arg1, void* arg2); //
 
 /**
 *PRE:	query is an array of char* (length = MAX_QUERY_ARGS)
@@ -37,11 +34,10 @@ void runClockChild(void* arg1, void* arg2);
 */
 void readQuery(char**);
 
-void addProg(const char*, int, char*);
-void replaceProg(const char*, int, int, char*);
-void execProgOnce(const char*, int, int);
-void execProgReccur(int);
-void readThenWrite(int infd, int outfd);
+void addProg(char*, int, char*);
+void replaceProg(char*, int, int, char*);
+void execProgOnce(char*, int, int);
+void execProgReccur(int progNum, int* pipefd);
 
 void reccurSigusr1Handler(int sig);
 void clockSigusr1Handler(int sig);
@@ -51,26 +47,27 @@ void clockSigusr1Handler(int sig);
 /*
 *Expected arguments : IP_address, port, delay(sec)
 */
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
 	if(argc != 4) {
 		perror("Nombre d'arguments invalide.");
 		exit(EXIT_FAILURE);
 	}
-	const char* addr = argv[1];
+ 	char* addr = argv[1];
 	int port = atoi(argv[2]);
 	int delay = atoi(argv[3]);
 
 	int pipefd[2];
 	spipe(pipefd);
 
-	int reccurPid = fork_and_run1(runReccurChild, pipefd);
+	int reccurPid = fork_and_run3(runReccurChild, pipefd, addr, &port);
 	int clockPid = fork_and_run2(runClockChild, pipefd, &delay);
 	sclose(pipefd[0]);
 
 	bool quit = false;
 	while(!quit) {
 		char* query[MAX_QUERY_ARGS];
+		printf("Entrez une commande: \n");
 		readQuery(query);
 		char queryType = query[0][0];
 		int progNum;
@@ -90,7 +87,7 @@ int main(int argc, char const *argv[])
 				break;
 			case '*':
 				progNum = atoi(query[1]);
-				execProgReccur(progNum);
+				execProgReccur(progNum, pipefd);
 				break;
 			case '@':
 				progNum = atoi(query[1]);
@@ -155,12 +152,12 @@ void readQuery(char** query) {
 
 //	=== Request functions ===
 
-void addProg(const char* addr, int port, char* filePath) {
+void addProg(char* addr, int port, char* filePath) {
 	printf("add prog '%s'\n", filePath);
 	replaceProg(addr, port, -1, filePath);
 }
 
-void replaceProg(const char* addr, int port, int progNum, char* filePath) {
+void replaceProg(char* addr, int port, int progNum, char* filePath) {
 	int lenFilePath = strlen(filePath);
 	Request req = {progNum, lenFilePath, *filePath};
 	int sockfd = initSocketClient(addr, port);
@@ -175,7 +172,7 @@ void replaceProg(const char* addr, int port, int progNum, char* filePath) {
 		sread(sockfd, &cResponse, sizeof(CompilationResponse)), 
 		"Error reading CompilationResponse");
 
-	if(progNum != -1){
+	if(progNum == -1){
 		printf("Add Program :\n");
 	} else {
 		printf("Replace Program :\n");
@@ -188,7 +185,7 @@ void replaceProg(const char* addr, int port, int progNum, char* filePath) {
 	sclose(sockfd);
 }
 
-void execProgOnce(const char* addr, int port, int progNum) {
+void execProgOnce(char* addr, int port, int progNum) {
 	Request req = {-2, progNum, ""};
 
 	int sockfd = initSocketClient(addr, port);
@@ -196,30 +193,59 @@ void execProgOnce(const char* addr, int port, int progNum) {
 	sshutdown(sockfd, SHUT_WR);
 
 	//read
-	printf("Exec. program no. %d", progNum);
+	ExecuteResponse eResponse;
+	checkNeg(
+		sread(sockfd, &eResponse, sizeof(ExecuteResponse)),
+		"Error reading ExecuteResponse");
+	//TODO switch on eResponse.programState
+	printf("Exec. program no. %d.\nTemps d'exécution: %d\nCode de sortie: %d", 
+		progNum, eResponse.executionTime, eResponse.exitCode);
 	readThenWrite(sockfd, STDOUT_FILENO);
 	sclose(sockfd);
 }
 
-void execProgReccur(int progNum) {
+void execProgReccur(int progNum, int* pipefd) {
 	printf("add prog num. %d to reccurent programs\n", progNum);
-	//TODO
+	Message msg = {ADD_RECCUR, progNum};
+	swrite(pipefd[1], &msg, sizeof(Message));
 }
 
 //	=== Child functions ===
 // reccurent execution child
-void runReccurChild(void* arg1) {
+void runReccurChild(void* arg1, void* arg2, void* arg3) {
 	printf("reccur created\n");
 	int* pipefd = arg1;
+	char* addr = arg2;
+	int* port = arg3;
 	ssigaction(SIGUSR1, reccurSigusr1Handler);
+	int* execTable = (int*) malloc(RECCUR_TABLE_START_SIZE * sizeof(int));
+	int lSize = 0;
+	int pSize = RECCUR_TABLE_START_SIZE;
 	
 	sclose(pipefd[1]);
 	pid_t pidParent = getppid();
-	while(terminate_recur == 0) {
 
+	while(terminate_recur == 0) {
+		Message msg;
+		sread(pipefd[0], &msg, sizeof(Message));
+		if(msg.messageType == CLOCK_TICK) {
+			for(int i=0; i<lSize; i++) {
+				execProgOnce(addr, *port, execTable[i]);
+			}
+		} else {
+			while(lSize >= pSize) {
+				pSize *= 2;
+				if ((execTable = (type*)realloc(execTable, pSize*sizeof(int))) == NULL) {
+				    perror("Allocation dynamique de execTable impossible");
+				}
+			}
+			execTable[lSize] = msg.progNum;
+			lSize++;
+		}
 	}
 	printf("reccur killed\n");
 	sclose(pipefd[0]);
+	free(execTable);
 	skill(pidParent, SIGCHLD);
 }
 
@@ -236,7 +262,9 @@ void runClockChild(void* arg1, void* arg2) {
 	sclose(pipefd[0]);
 	pid_t pidParent = getppid();
 	while(terminate_clock == 0) {
-
+		sleep(*delay);
+		Message msg = {CLOCK_TICK, 0};
+		swrite(pipefd[1], &msg, sizeof(Message));
 	}
 	printf("clock killed\n");
 	sclose(pipefd[1]);
