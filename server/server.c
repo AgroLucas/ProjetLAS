@@ -30,7 +30,7 @@ void requestHandler(void* arg1);
 bool createEmptyProgram(Programm** program, char* progName);
 int getFreeIdNumber();
 
-bool getProgram(Programm* program, int programId);
+bool getProgram(Programm** program, int programId);
 
 void setProgram(Programm* program, bool isNew);
 
@@ -73,14 +73,13 @@ void requestHandler(void* arg1) {
 
 	Request request;
 	sread(*clientSocket, &request, sizeof(request));
-
 	Programm* program;
 	if (request.firstInt == EXECUTION_VALUE) {
-		getProgram(program, request.secondInt);
+		getProgram(&program, request.secondInt);
 		if (executionHandler(program, request.secondInt, *clientSocket))
 			free(program);
 	} else {
-		bool flag = request.firstInt == ADD_VALUE ? createEmptyProgram(&program, request.progName) : getProgram(program, request.firstInt);
+		bool flag = request.firstInt == ADD_VALUE ? createEmptyProgram(&program, request.progName) : getProgram(&program, request.firstInt);
 		if (flag && compilationHandler(program, *clientSocket))
 			free(program);
 	}
@@ -121,8 +120,13 @@ int getFreeIdNumber() {
 }
 
 
-bool getProgram(Programm* program, int programId) {
+bool getProgram(Programm** program, int programId) {
 	if (programId < 0) return false;
+
+	if ((*program = (Programm*)malloc(sizeof(Programm))) == NULL) {
+		perror("Allocation dynamique de program impossible");
+		return false;
+	}
 
     int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
@@ -135,7 +139,7 @@ bool getProgram(Programm* program, int programId) {
 	  	sshmdt(sshmat(sharedMemID));
         return false;
     }
-    program = content->programTab[programId];
+    *program = content->programTab[programId];
 
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
@@ -177,7 +181,6 @@ bool executionHandler(Programm* program, int programId, int clientSocket) {
 	char* stdout;
 
 	if (!prepareExecuteResponse(program, &executeResponse, &stdout)) return false;
-
 	if (executeResponse.programState == GOOD_EXECUTION || executeResponse.programState == WRONG_EXECUTION)
 		setProgram(program, false);
 
@@ -206,7 +209,6 @@ bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse,
 		sclose(pipefd[1]);
 		swaitpid(childId, &status, 0);
 		executeResponse->executionTime = getCurrentMs() - beginTime;
-
 		getStringFromInput(stdout, pipefd[0]);
 		sclose(pipefd[0]);
 		executeResponse->exitCode = WEXITSTATUS(status);
@@ -216,6 +218,7 @@ bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse,
 			executeResponse->programState = WRONG_EXECUTION;
 
 		program->nombreExcecutions++;
+		program->tempsExcecution += executeResponse->executionTime;
 	}
 	return true;
 }
@@ -252,7 +255,7 @@ void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int cl
 bool compilationHandler(Programm* program, int clientSocket) {
 	CompilationResponse compilationResponse = {program->programmeID, 0};
 	char* errors;
-	if (!prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket)) return false;
+	prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket);
 	setProgram(program, false);
 	sendCompilationResponse(&compilationResponse, &errors, clientSocket);
 
@@ -280,12 +283,12 @@ bool prepareCompilationResponse(Programm* program, CompilationResponse* compilat
 
 	int status;
 	swaitpid(childId, &status, 0);
-	int exitCode = WEXITSTATUS(status);
+	compilationResponse->exitCode = WEXITSTATUS(status);
 
 	free(inputPath);
 	free(outputPath);
 
-	program->hasError = (exitCode == 0) ? false : true;
+	program->hasError = (compilationResponse->exitCode == 0) ? false : true;
 
 	return true;
 }
