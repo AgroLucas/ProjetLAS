@@ -160,7 +160,7 @@ void readQuery(char** query) {
 	}
 }
 
-//	=== Request functions ===
+//	=== Server Request functions ===
 
 void addProg(char* addr, int port, char* filePath) {
 	printf("add prog '%s'\n", filePath);
@@ -171,7 +171,11 @@ void replaceProg(char* addr, int port, int progNum, char* filePath) {
 	int lenFilePath = strlen(filePath);
 	Request req = {progNum, lenFilePath, *filePath};
 	int sockfd = initSocketClient(addr, port);
-	int filefd = sopen(filePath, O_RDONLY, 0744);
+	int filefd = open(filePath, O_RDONLY, 0744);
+	if(filefd < 0) {
+		printf("Fichier non trouvé\n");
+		return;
+	}
 	swrite(sockfd, &req, sizeof(Request));
 	readThenWrite(filefd, sockfd);
 
