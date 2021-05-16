@@ -37,6 +37,8 @@ void runClockChild(void* arg1, void* arg2); //
 */
 void readQuery(char**);
 
+void extractFilenameFromPath(char* path, char* filename);
+
 bool isValidQuery(char**);
 
 bool verifyText(char*);
@@ -95,7 +97,6 @@ int main(int argc, char *argv[]) {
 					break;
 				case '+':
 					filePath = query[1];
-					printf("filepath: %s", filePath);
 					addProg(addr, port, filePath);
 					break;
 				case '.':
@@ -142,6 +143,28 @@ void clockSIGCHLDHandler(int sig) {
 
 void reccurSIGCHLDHandler(int sig) {
 	reccur_kill_receipt = 1;
+}
+
+void extractFilenameFromPath(char* path, char* filename) {
+	char* pathTmp;
+	char* last;
+	if ((pathTmp = (char*)malloc(MAX_QUERY_ARG_LENGHT*sizeof(char))) == NULL) {
+		perror("Allocation dynamique de pathTmp impossible");
+		exit(1);
+	}
+	if ((last = (char*)malloc(MAX_QUERY_ARG_LENGHT*sizeof(char))) == NULL) {
+		perror("Allocation dynamique de last impossible");
+		exit(1);
+	}
+	strcpy(pathTmp, path);
+	char* token = strtok(pathTmp, "/");
+	while(token != NULL) {
+		strcpy(last, token);
+		token = strtok(NULL, "/");
+	}
+	strcpy(filename, last);
+	free(last);
+	free(pathTmp);
 }
 
 
@@ -230,7 +253,14 @@ void replaceProg(char* addr, int port, int progNum, char* filePath) {
 		progNum, 
 		MAX_PROG_NAME+1
 	};
-	strcpy(req.progName, filePath);
+	char* filename;
+	if ((filename = (char*)malloc(MAX_QUERY_ARG_LENGHT*sizeof(char))) == NULL) {
+		perror("Allocation dynamique de filename impossible");
+		exit(1);
+	}
+	extractFilenameFromPath(filePath, filename);
+	strcpy(req.progName, filename);
+	free(filename);
 	int sockfd = initSocketClient(addr, port);
 	int filefd = open(filePath, O_RDONLY, 0744);
 	if(filefd < 0) {
