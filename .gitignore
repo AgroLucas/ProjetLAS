@@ -3,3 +3,5 @@ server/server
 server/maint
 server/stat
 client/client
+server/repertoireProgs/*.c
+server/repertoireProgs/*.out

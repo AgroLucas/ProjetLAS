@@ -95,6 +95,7 @@ int main(int argc, char *argv[]) {
 					break;
 				case '+':
 					filePath = query[1];
+					printf("filepath: %s", filePath);
 					addProg(addr, port, filePath);
 					break;
 				case '.':
@@ -229,8 +230,13 @@ void addProg(char* addr, int port, char* filePath) {
 }
 
 void replaceProg(char* addr, int port, int progNum, char* filePath) {
-	int lenFilePath = strlen(filePath);
-	Request req = {progNum, lenFilePath, *filePath};
+	char* fn = "helloworld.c";
+	int lenFilePath = strlen(fn);
+	Request req = {
+		progNum, 
+		lenFilePath, 
+		"helloworld.c" //TODO stub
+	};
 	int sockfd = initSocketClient(addr, port);
 	int filefd = open(filePath, O_RDONLY, 0744);
 	if(filefd < 0) {

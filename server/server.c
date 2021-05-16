@@ -21,7 +21,7 @@
 #include "../utils_v10.h"
 #include "../const.h"
 
-#define BASE_PROG_PATH "./server/progs/"
+#define BASE_PROG_PATH "./server/repertoireProgs/"
 #define MAX_STRING_SIZE_INT 4
 
 
@@ -81,7 +81,10 @@ void requestHandler(void* arg1) {
 		if (executionHandler(program, request.secondInt, *clientSocket))
 			free(program);
 	} else {
-		bool flag = request.firstInt == ADD_VALUE ? createEmptyProgram(&program, request.progName) : getProgram(&program, request.firstInt);
+		printf("request progName: %s\n",request.progName);
+		bool flag = request.firstInt == ADD_VALUE 
+		? createEmptyProgram(&program, request.progName) 
+		: getProgram(&program, request.firstInt);
 		if (flag && compilationHandler(program, *clientSocket))
 			free(program);
 	}
@@ -123,11 +126,11 @@ int getFreeIdNumber() {
 
 //deep copy of struct Program
 void programCpy(Programm* dest, Programm* src) {
-	dest->programmeID 		= src->programmeID;
+	dest->programmeID = src->programmeID;
 	strcpy(dest->fichierSource, src->fichierSource);
-	dest->hasError 			= src->hasError;
+	dest->hasError = src->hasError;
 	dest->nombreExcecutions = src->nombreExcecutions;
-	dest->tempsExcecution 	= src->tempsExcecution;
+	dest->tempsExcecution = src->tempsExcecution;
 }
 
 bool getProgram(Programm** program, int programId) {
@@ -166,8 +169,16 @@ void setProgram(Programm* program, bool isNew) {
     if (isNew) 
     	content->logicalSize++;
 
+    if ((content->programTab[program->programmeID] = (Programm*)malloc(sizeof(Programm))) == NULL) {
+    	perror("Allocation dynamique de content->programTab[program->programmeID] impossible");
+    	exit(1);
+    }
+    if ((content->programTab[program->programmeID]->fichierSource = (char*)malloc((MAX_PROG_NAME+1)*sizeof(char))) == NULL) {
+    	perror("Allocation dynamique de content->programTab[program->programmeID]->fichierSource impossible");
+    	exit(1);
+    }
     programCpy(content->programTab[program->programmeID], program);
-
+    
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
 }
