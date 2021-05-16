@@ -12,12 +12,12 @@
 #include "../utils_v10.h"
 
 
-
 int main(int argc, char **argv) {
     if (argc != 2) {
         perror("Usage : ./stat <ID du programme>\n");
         exit(EXIT_FAILURE);
     }
+
     int programmId = atoi(argv[1]);
     if (programmId < 0 || programmId > NBR_PROGS) {
         perror("ID de programme invalide\n");
@@ -26,25 +26,29 @@ int main(int argc, char **argv) {
 
     int semaID = sem_get(SEMA_KEY, NO_SEMAPHORE);
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
+    sem_down0(semaID);
     
     SharedMemoryContent* content = sshmat(sharedMemID);
     Programm* tab = content->programTab;
-    //lock les ressources
-    //sem_down0(semaID);
-    //si pas de programme à cet indice là --> erreur
+
     if (programmId >= content->logicalSize) {
         perror("ID de programme invalide\n");
         exit(EXIT_FAILURE);
     }
-    printf("%d\n", (tab)[programmId].programmeID);
-    printf("%s\n", (tab)[programmId].fichierSource);
-    printf("%s\n", (tab)[programmId].hasError ? "true" : "false");
-    printf("%d\n", (tab)[programmId].nombreExcecutions);
-    printf("%d\n", (tab)[programmId].tempsExcecution);
 
-    // relache la sharedMem
+    Programm program = content->programTab[programmId];
+
+    printf("-----------------------------------------------\n");
+    printf("Statistique pour le programme numéro %d\n", program.programmeID);
+    printf("\t- Nom du fichier source : %s\n", program.fichierSource);
+    printf("\t- %s\n", program.hasError 
+        ? "Possède actuellement une ou plusieurs erreurs à la compilation"
+        : "S'est bien compilé sans aucune erreur");
+    printf("\t- Nombre d'éxecutions : %d\n", program.nombreExcecutions);
+    printf("\t- Temps total d'éxecution : %d\n", program.tempsExcecution);
+    printf("-----------------------------------------------\n\n");
+
     sshmdt(sshmat(sharedMemID));
-    // libère la ressource
-   //sem_up0(semaID);
+    sem_up0(semaID);
     exit(EXIT_SUCCESS);
 }
