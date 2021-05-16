@@ -293,7 +293,20 @@ void execProgOnce(char* addr, int port, int progNum) {
 				progNum, eResponse.executionTime, eResponse.exitCode);
 			break;
 	}
-	readThenWrite(sockfd, STDOUT_FILENO);
+	char* stdout;
+	int t = sread(sockfd, &stdout, 20);
+	swrite(1, &stdout, t);
+	//readThenWrite(sockfd, STDOUT_FILENO);
+	/*ExecuteResponse executeResponse;
+	sread(sockfd, &executeResponse, sizeof(ExecuteResponse));
+	char* stdout;
+	getStringFromInput(&stdout, sockfd);
+	
+	printf("id du programme -> %d\n", executeResponse.n);
+	printf("etat du programme -> %d\n", executeResponse.programState);
+	printf("temps execution -> %d\n", executeResponse.executionTime);
+	printf("code de retour -> %d\n", executeResponse.exitCode);
+	printf("stdout -> %s\n", stdout);*/
 	sclose(sockfd);
 }
 

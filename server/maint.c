@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     int sharedMemID;
     int semaID;
     Programm programTab[NBR_PROGS];
-    SharedMemoryContent sharedMemoryContent = {0, programTab};
+    SharedMemoryContent sharedMemoryContent = {0, *programTab};
 
     switch (type)
     {

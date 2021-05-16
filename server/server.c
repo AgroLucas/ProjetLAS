@@ -74,7 +74,7 @@ void requestHandler(void* arg1) {
 	int* clientSocket = arg1;
 
 	Request request;
-	sread(*clientSocket, &request, sizeof(request));
+	sread(*clientSocket, &request, sizeof(Request));
 	Programm* program;
 	if (request.firstInt == EXECUTION_VALUE) {
 		getProgram(&program, request.secondInt);
@@ -152,7 +152,11 @@ bool getProgram(Programm** program, int programId) {
 	  	sshmdt(sshmat(sharedMemID));
         return false;
     }
-    *program = content->programTab[programId];
+
+    **program = content->programTab[programId];
+    printf("<%s>\n", (*program)->fichierSource);
+    printf("<%d>\n", (*program)->nombreExcecutions);
+    printf("<%d>\n", (*program)->tempsExcecution);
 
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
@@ -169,15 +173,16 @@ void setProgram(Programm* program, bool isNew) {
     if (isNew) 
     	content->logicalSize++;
 
-    if ((content->programTab[program->programmeID] = (Programm*)malloc(sizeof(Programm))) == NULL) {
+    /*if ((content->programTab[program->programmeID] = (Programm*)malloc(sizeof(Programm))) == NULL) {
     	perror("Allocation dynamique de content->programTab[program->programmeID] impossible");
     	exit(1);
-    }
-    if ((content->programTab[program->programmeID]->fichierSource = (char*)malloc((MAX_PROG_NAME+1)*sizeof(char))) == NULL) {
+    }*/
+    if ((content->programTab[program->programmeID].fichierSource = (char*)malloc((MAX_PROG_NAME+1)*sizeof(char))) == NULL) {
     	perror("Allocation dynamique de content->programTab[program->programmeID]->fichierSource impossible");
     	exit(1);
     }
-    programCpy(content->programTab[program->programmeID], program);
+    programCpy(&(content->programTab[program->programmeID]), program);
+    printf("%s\n", content->programTab[program->programmeID].fichierSource);
     
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
@@ -265,8 +270,10 @@ void executeAndGetSdtout(void* arg1, void* arg2) {
 
 
 void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int clientSocket) {
-	swrite(clientSocket, executeResponse, sizeof(&executeResponse));
+	swrite(clientSocket, executeResponse, sizeof(ExecuteResponse));
 	swrite(clientSocket, *stdout, strlen(*stdout)*sizeof(char));
+	printf("%d\n", (int)strlen(*stdout));
+	printf("%s\n", *stdout);
 	sshutdown(clientSocket, SHUT_WR);
 }
 
@@ -331,7 +338,7 @@ void compileAndGetErrors(void* arg1, void* arg2, void* arg3) {
 
 
 void sendCompilationResponse(CompilationResponse* compilationResponse, char** errors, int clientSocket) {
-	swrite(clientSocket, compilationResponse, sizeof(compilationResponse));
+	swrite(clientSocket, compilationResponse, sizeof(CompilationResponse));
 	swrite(clientSocket, *errors, strlen(*errors) * sizeof(char));
 	sshutdown(clientSocket, SHUT_WR);
 }

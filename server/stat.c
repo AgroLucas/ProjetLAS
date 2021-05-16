@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     //return la sharedMem
     void *sharedMemory = sshmat(sharedMemID);
     SharedMemoryContent* content = sshmat(sharedMemID);
-    Programm** tab = content->programTab;
+    Programm* tab = content->programTab;
     //lock les ressources
     sem_down0(semaID);
     //si pas de programme à cet indice là --> erreur
@@ -44,11 +44,11 @@ int main(int argc, char **argv)
         printf("programmeID invalide");
         exit(EXIT_FAILURE);
     }
-    printf("%d", (*tab)[noProgramme].programmeID);
-    printf("%s", (*tab)[noProgramme].fichierSource);
-    printf("%s", (*tab)[noProgramme].hasError ? "true" : "false");
-    printf("%d", (*tab)[noProgramme].nombreExcecutions);
-    printf("%d", (*tab)[noProgramme].tempsExcecution);
+    printf("%d", (tab)[noProgramme].programmeID);
+    printf("%s", (tab)[noProgramme].fichierSource);
+    printf("%s", (tab)[noProgramme].hasError ? "true" : "false");
+    printf("%d", (tab)[noProgramme].nombreExcecutions);
+    printf("%d", (tab)[noProgramme].tempsExcecution);
 
     // relache la sharedMem
     sshmdt(sshmat(sharedMemID));
