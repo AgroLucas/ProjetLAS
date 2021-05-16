@@ -6,12 +6,11 @@
 #define SERVER_IP 127.0.0.1
 
 #define PERM 0666
-#define SEMA_KEY  5
-#define SHAREDMEM_KEY  6
+#define SEMA_KEY 10
+#define SHAREDMEM_KEY 8
 #define NBR_PROGS 1000
-//sharedMem 2 en 1 --> indice du tableau + structure associée
-// aka int + taille de la structure * nbre de structures existantes
 #define SHAREDMEMSIZE sizeof(int) + NBR_PROGS * sizeof(Programm)
+#define MAX_PROG_NAME 255
 
 #define EXECUTION_VALUE -2
 #define ADD_VALUE -1
@@ -20,7 +19,7 @@
 
 typedef struct {
 	int programmeID;
-	char* fichierSource;
+	char fichierSource[MAX_PROG_NAME+1];
 	bool hasError;
 	int nombreExcecutions;
 	int tempsExcecution;

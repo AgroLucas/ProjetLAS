@@ -81,7 +81,6 @@ void requestHandler(void* arg1) {
 		if (executionHandler(program, request.secondInt, *clientSocket))
 			free(program);
 	} else {
-		printf("request progName: %s\n",request.progName);
 		bool flag = request.firstInt == ADD_VALUE 
 		? createEmptyProgram(&program, request.progName) 
 		: getProgram(&program, request.firstInt);
@@ -101,7 +100,7 @@ bool createEmptyProgram(Programm** program, char* progName) {
 		return false;
 	}
 	(*program)->programmeID = getFreeIdNumber();
-	(*program)->fichierSource = progName;
+	strcpy((*program)->fichierSource, progName);
 	(*program)->hasError = false;
 	(*program)->nombreExcecutions = 0;
 	(*program)->tempsExcecution = 0;
@@ -177,12 +176,15 @@ void setProgram(Programm* program, bool isNew) {
     	perror("Allocation dynamique de content->programTab[program->programmeID] impossible");
     	exit(1);
     }*/
-    if ((content->programTab[program->programmeID].fichierSource = (char*)malloc((MAX_PROG_NAME+1)*sizeof(char))) == NULL) {
+    /*if ((content->programTab[program->programmeID].fichierSource = (char*)malloc((MAX_PROG_NAME+1)*sizeof(char))) == NULL) {
     	perror("Allocation dynamique de content->programTab[program->programmeID]->fichierSource impossible");
     	exit(1);
-    }
+    }*/
+    //char test[MAX_PROG_NAME+1];
+    //content->programTab[program->programmeID].fichierSource = test;
     programCpy(&(content->programTab[program->programmeID]), program);
-    printf("%s\n", content->programTab[program->programmeID].fichierSource);
+    printf("program fichier source -> %s\n", program->fichierSource);
+    printf("fichier source on set -> %s\n", content->programTab[program->programmeID].fichierSource);
     
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
@@ -272,8 +274,6 @@ void executeAndGetSdtout(void* arg1, void* arg2) {
 void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int clientSocket) {
 	swrite(clientSocket, executeResponse, sizeof(ExecuteResponse));
 	swrite(clientSocket, *stdout, strlen(*stdout)*sizeof(char));
-	printf("%d\n", (int)strlen(*stdout));
-	printf("%s\n", *stdout);
 	sshutdown(clientSocket, SHUT_WR);
 }
 

@@ -13,46 +13,38 @@
 
 
 
-int main(int argc, char **argv)
-{
-    if (argc != 2)
-    {
-        printf("Usage : %s <ID du programme>", argv[0]);
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        perror("Usage : ./stat <ID du programme>\n");
         exit(EXIT_FAILURE);
     }
-    int noProgramme = atoi(argv[1]);
-    if (noProgramme < 0 || noProgramme > NBR_PROGS)
-    {
-        printf("programmeID invalide");
+    int programmId = atoi(argv[1]);
+    if (programmId < 0 || programmId > NBR_PROGS) {
+        perror("ID de programme invalide\n");
         exit(EXIT_FAILURE);
     }
 
-    int noSemaphore = 1;
-    //SEMA_KEY et SHAREDMEM_KEY definies dans const.h
     int semaID = sem_get(SEMA_KEY, NO_SEMAPHORE);
-    //va chercher la sharedMem avec une perm de 0 car on ne fait que la rechercher
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
-    //return la sharedMem
-    void *sharedMemory = sshmat(sharedMemID);
+    
     SharedMemoryContent* content = sshmat(sharedMemID);
     Programm* tab = content->programTab;
     //lock les ressources
-    sem_down0(semaID);
+    //sem_down0(semaID);
     //si pas de programme à cet indice là --> erreur
-    if (noProgramme >= content->logicalSize)
-    {
-        printf("programmeID invalide");
+    if (programmId >= content->logicalSize) {
+        perror("ID de programme invalide\n");
         exit(EXIT_FAILURE);
     }
-    printf("%d", (tab)[noProgramme].programmeID);
-    printf("%s", (tab)[noProgramme].fichierSource);
-    printf("%s", (tab)[noProgramme].hasError ? "true" : "false");
-    printf("%d", (tab)[noProgramme].nombreExcecutions);
-    printf("%d", (tab)[noProgramme].tempsExcecution);
+    printf("%d\n", (tab)[programmId].programmeID);
+    printf("%s\n", (tab)[programmId].fichierSource);
+    printf("%s\n", (tab)[programmId].hasError ? "true" : "false");
+    printf("%d\n", (tab)[programmId].nombreExcecutions);
+    printf("%d\n", (tab)[programmId].tempsExcecution);
 
     // relache la sharedMem
     sshmdt(sshmat(sharedMemID));
     // libère la ressource
-    sem_up0(semaID);
+   //sem_up0(semaID);
     exit(EXIT_SUCCESS);
 }
