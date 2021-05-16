@@ -61,13 +61,18 @@ void clockSIGUSR1Handler(int sig);
 *Arguments : IP_address, port, delay(sec)
 */
 int main(int argc, char *argv[]) {
-	if(argc != 4) {
-		perror("Nombre d'arguments invalide.");
+	if (argc != 4) {
+		perror("Nombre d'arguments invalide");
 		exit(EXIT_FAILURE);
 	}
  	char* addr = argv[1];
 	int port = atoi(argv[2]);
 	int delay = atoi(argv[3]);
+
+	if (delay < 1) {
+		perror("Le delais doit être un entier > 0");
+		exit(EXIT_FAILURE);
+	}
 
 	int pipefd[2];
 	spipe(pipefd);
