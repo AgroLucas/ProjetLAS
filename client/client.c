@@ -112,10 +112,10 @@ int main(int argc, char *argv[]) {
 					execProgOnce(addr, port, progNum);
 					break;
 			}
-		}else {
+		} else {
 			printf("Commande invalide!\n");
 		}
-		for(int i=0; i<MAX_QUERY_ARGS; i++) {
+		for (int i=0; i<MAX_QUERY_ARGS; i++) {
 			free(query[i]);
 		}
 	}
@@ -129,15 +129,11 @@ int main(int argc, char *argv[]) {
 void killChildren(int clockPid, int reccurPid) {
 	ssigaction(SIGCHLD, clockSIGCHLDHandler);
 	skill(clockPid, SIGUSR1);
-	while(clock_kill_receipt == 0) {
-		// wait
-	}
+	while(clock_kill_receipt == 0);
 
 	ssigaction(SIGCHLD, reccurSIGCHLDHandler);
 	skill(reccurPid, SIGUSR1);
-	while(reccur_kill_receipt == 0) {
-		// wait
-	}
+	while(reccur_kill_receipt == 0);
 }
 
 void clockSIGCHLDHandler(int sig) {
@@ -157,40 +153,40 @@ void readQuery(char** query) {
 	}
 	char* token = strtok(buffRd, " \n");
 	int i=0;
-	for(int i=0; i<MAX_QUERY_ARGS; i++) {
+	for (int i=0; i<MAX_QUERY_ARGS; i++) {
 		//malloc
 		char* arg = (char*) malloc(MAX_QUERY_ARG_LENGHT * sizeof(char));
-		if(token != NULL) {
+		if (token != NULL) {
 			strcpy(arg, token);
 			query[i] = arg;
 			token = strtok(NULL, " \n");	
-		}else {
+		} else {
 			query[i] = arg;
 		}
 	}
 }
 
 bool isValidQuery(char** query) {
-	if(!verifyChar(query[0]))
+	if (!verifyChar(query[0]))
 		return false;
 	switch(query[0][0]) {
 		case 'q':
-		break;
+			break;
 		case '+':
 			if(!verifyText(query[1])) 
 				return false;
-		break;
+			break;
 		case '.':
 			if(!verifyInt(query[1])) 
 				return false;
 			if(!verifyText(query[2])) 
 				return false;
-		break;
+			break;
 		case '*':
 		case '@':
 			if(!verifyInt(query[1])) 
 				return false;
-		break;
+			break;
 		default:
 			return false;
 	}
@@ -198,17 +194,17 @@ bool isValidQuery(char** query) {
 }
 
 bool verifyText(char* queryArg) {
-	if(queryArg == NULL)
+	if (queryArg == NULL)
 		return false;
-	if(strlen(queryArg) == 0)
+	if (strlen(queryArg) == 0)
 		return false;
 	return true;
 }
 
 bool verifyInt(char* queryArg) {
-	if(!verifyText(queryArg))
+	if (!verifyText(queryArg))
 		return false;
-	for(int i=0; i<strlen(queryArg); i++) {
+	for (int i=0; i<strlen(queryArg); i++) {
 		char c = queryArg[i];
 		if(!isdigit(c))
 			return false;
@@ -230,13 +226,11 @@ void addProg(char* addr, int port, char* filePath) {
 }
 
 void replaceProg(char* addr, int port, int progNum, char* filePath) {
-	char* fn = "helloworld.c";
-	int lenFilePath = strlen(fn);
 	Request req = {
 		progNum, 
-		lenFilePath, 
-		"helloworld.c" //TODO stub
+		MAX_PROG_NAME+1
 	};
+	strcpy(req.progName, filePath);
 	int sockfd = initSocketClient(addr, port);
 	int filefd = open(filePath, O_RDONLY, 0744);
 	if(filefd < 0) {
@@ -253,7 +247,7 @@ void replaceProg(char* addr, int port, int progNum, char* filePath) {
 		sread(sockfd, &cResponse, sizeof(CompilationResponse)), 
 		"Error reading CompilationResponse");
 
-	if(progNum == -1){
+	if(progNum == -1) {
 		printf("Ajout du programme ");
 	} else {
 		printf("Remplacement du programme ");

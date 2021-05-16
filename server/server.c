@@ -132,6 +132,7 @@ void programCpy(Programm* dest, Programm* src) {
 	dest->tempsExcecution = src->tempsExcecution;
 }
 
+
 bool getProgram(Programm** program, int programId) {
 	if (programId < 0) return false;
 
@@ -153,9 +154,6 @@ bool getProgram(Programm** program, int programId) {
     }
 
     **program = content->programTab[programId];
-    printf("<%s>\n", (*program)->fichierSource);
-    printf("<%d>\n", (*program)->nombreExcecutions);
-    printf("<%d>\n", (*program)->tempsExcecution);
 
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
@@ -171,20 +169,7 @@ void setProgram(Programm* program, bool isNew) {
     SharedMemoryContent* content = sshmat(sharedMemID);
     if (isNew) 
     	content->logicalSize++;
-
-    /*if ((content->programTab[program->programmeID] = (Programm*)malloc(sizeof(Programm))) == NULL) {
-    	perror("Allocation dynamique de content->programTab[program->programmeID] impossible");
-    	exit(1);
-    }*/
-    /*if ((content->programTab[program->programmeID].fichierSource = (char*)malloc((MAX_PROG_NAME+1)*sizeof(char))) == NULL) {
-    	perror("Allocation dynamique de content->programTab[program->programmeID]->fichierSource impossible");
-    	exit(1);
-    }*/
-    //char test[MAX_PROG_NAME+1];
-    //content->programTab[program->programmeID].fichierSource = test;
     programCpy(&(content->programTab[program->programmeID]), program);
-    printf("program fichier source -> %s\n", program->fichierSource);
-    printf("fichier source on set -> %s\n", content->programTab[program->programmeID].fichierSource);
     
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
