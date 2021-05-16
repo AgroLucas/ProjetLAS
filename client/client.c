@@ -281,13 +281,14 @@ void execProgOnce(char* addr, int port, int progNum) {
 		case WRONG_EXECUTION:
 			printf("Le programme no. %d a renvoyé une erreur à l'exécution.\nTemps d'exécution: %d\nCode de sortie: %d\n", 
 					progNum, eResponse.executionTime, eResponse.exitCode);
+			readThenWrite(sockfd, STDOUT_FILENO);
 			break;
 		case GOOD_EXECUTION:
 			printf("Le programme no. %d s'est exécuté correctement.\nTemps d'exécution: %d\nCode de sortie: %d\n", 
 				progNum, eResponse.executionTime, eResponse.exitCode);
+			readThenWrite(sockfd, STDOUT_FILENO);
 			break;
 	}
-	readThenWrite(sockfd, STDOUT_FILENO);
 	sclose(sockfd);
 }
 

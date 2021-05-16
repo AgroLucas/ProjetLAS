@@ -92,8 +92,6 @@ void requestHandler(void* arg1) {
 }
 
 
-
-
 bool createEmptyProgram(Programm** program, char* progName) {
 	if ((*program = (Programm*)malloc(sizeof(Programm))) == NULL) {
 		perror("Allocation dynamique de program impossible");
@@ -191,15 +189,17 @@ bool getProgramPath(int programId, char** path, char* extension) {
 
 bool executionHandler(Programm* program, int programId, int clientSocket) {
 	ExecuteResponse executeResponse = {programId, GOOD_EXECUTION, 0, 0};
-	char* stdout;
+	char* stdout = NULL;
 
 	if (!prepareExecuteResponse(program, &executeResponse, &stdout)) return false;
-	if (executeResponse.programState == GOOD_EXECUTION || executeResponse.programState == WRONG_EXECUTION)
-		setProgram(program, false);
 
-	sendExecuteResponse(&executeResponse, &stdout, clientSocket);
+	if (executeResponse.programState == GOOD_EXECUTION || executeResponse.programState == WRONG_EXECUTION) {
+		setProgram(program, false);
+		sendExecuteResponse(&executeResponse, &stdout, clientSocket);
+		free(stdout);
+	} else
+		sendExecuteResponse(&executeResponse, &stdout, clientSocket);
 	
-	free(stdout);
 	return true;
 }
 
@@ -244,7 +244,6 @@ long getCurrentMs() {
 }
 
 
-
 void executeAndGetSdtout(void* arg1, void* arg2) {
 	char* executablePath = arg1;
 	int *pipefd = arg2;
@@ -267,7 +266,7 @@ void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int cl
 
 bool compilationHandler(Programm* program, int clientSocket) {
 	CompilationResponse compilationResponse = {program->programmeID, 0};
-	char* errors;
+	char* errors = NULL;
 	prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket);
 	setProgram(program, false);
 	sendCompilationResponse(&compilationResponse, &errors, clientSocket);
