@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 	bool quit = false;
 	while(!quit) {
 		char* query[MAX_QUERY_ARGS];
-		const char* msg = "> ";
+		const char* msg = "\n> ";
 		nwrite(STDOUT_FILENO, msg, strlen(msg));
 		readQuery(query);
 		if(isValidQuery(query)){
@@ -155,11 +155,11 @@ void extractFilenameFromPath(char* path, char* filename) {
 	char* last;
 	if ((pathTmp = (char*)malloc(MAX_QUERY_ARG_LENGHT*sizeof(char))) == NULL) {
 		perror("Allocation dynamique de pathTmp impossible");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	if ((last = (char*)malloc(MAX_QUERY_ARG_LENGHT*sizeof(char))) == NULL) {
 		perror("Allocation dynamique de last impossible");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	strcpy(pathTmp, path);
 	char* token = strtok(pathTmp, "/");
@@ -355,15 +355,15 @@ void runReccurChild(void* arg1, void* arg2, void* arg3) {
 	ssigaddset(&set, SIGUSR1);
 	ssigprocmask(SIG_UNBLOCK, &set, NULL);
 
-	while(terminate_recur == 0) {
+	while (terminate_recur == 0) {
 		Message msg;
 		sread(pipefd[0], &msg, sizeof(Message));
-		if(msg.messageType == CLOCK_TICK) {
-			for(int i=0; i<lSize; i++) {
+		if (msg.messageType == CLOCK_TICK) {
+			for (int i=0; i<lSize; i++) {
 				execProgOnce(addr, *port, execTable[i]);
 			}
 		} else {
-			while(lSize >= pSize) {
+			while (lSize >= pSize) {
 				pSize *= 2;
 				if ((execTable = (int*)realloc(execTable, pSize*sizeof(int))) == NULL) {
 				    perror("Allocation dynamique de execTable impossible");
@@ -396,7 +396,7 @@ void runClockChild(void* arg1, void* arg2) {
 	ssigaddset(&set, SIGUSR1);
 	ssigprocmask(SIG_UNBLOCK, &set, NULL); 
 
-	while(terminate_clock == 0) {
+	while (terminate_clock == 0) {
 		sleep(*delay);
 		Message msg = {CLOCK_TICK, 0};
 		swrite(pipefd[1], &msg, sizeof(Message));

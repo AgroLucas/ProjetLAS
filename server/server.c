@@ -27,32 +27,30 @@
 
 void requestHandler(void* arg1);
 
-bool createEmptyProgram(Programm** program, char* progName);
+bool createEmptyProgram(Program** program, char* progName);
 int getFreeIdNumber();
 
-void programCpy(Programm* dest, Programm* src);
+void programCpy(Program* dest, Program* src);
 
-bool getProgram(Programm** program, int programId);
+bool getProgram(Program** program, int programId);
 
-void setProgram(Programm* program, bool isNew);
+void setProgram(Program* program, bool isNew);
 
 bool getProgramPath(int programId, char**path, char* extension);
 
-bool executionHandler(Programm* program, int programId, int clientSocket);
-bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse, char** stdout);
+bool executionHandler(Program* program, int programId, int clientSocket);
+bool prepareExecuteResponse(Program* program, ExecuteResponse* executeResponse, char** stdout);
 void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int clientSocket);
 long getCurrentMs();
 void executeAndGetSdtout(void* arg1, void* arg2);
 
-bool compilationHandler(Programm* program, int clientSocket);
-bool prepareCompilationResponse(Programm* program, CompilationResponse* compilationResponse, char** errors, int clientSocket);
+void compilationHandler(Program* program, int clientSocket);
+bool prepareCompilationResponse(Program* program, CompilationResponse* compilationResponse, char** errors, int clientSocket);
 void sendCompilationResponse(CompilationResponse* compilationResponse, char** errors, int clientSocket);
 void compileAndGetErrors(void* arg1, void* arg2, void* arg3);
 
 
 int main(int argc, char **argv) {
-	printf("%s\n", argv[0]);
-	//TODO check path
 	if (argc != 2) {
 		perror("Usage : ./server/server [port]\n");
 		exit(EXIT_FAILURE);
@@ -75,17 +73,18 @@ void requestHandler(void* arg1) {
 
 	Request request;
 	sread(*clientSocket, &request, sizeof(Request));
-	Programm* program = NULL;
+	Program* program = NULL;
+
 	if (request.firstInt == EXECUTION_VALUE) {
 		getProgram(&program, request.secondInt);
 		if (executionHandler(program, request.secondInt, *clientSocket))
 			free(program);
 	} else {
-		bool flag = request.firstInt == ADD_VALUE 
-		? createEmptyProgram(&program, request.progName) 
-		: getProgram(&program, request.firstInt);
-		if (flag && compilationHandler(program, *clientSocket))
+		bool flag = (request.firstInt == ADD_VALUE) ? createEmptyProgram(&program, request.progName) : getProgram(&program, request.firstInt);
+		if (flag) {
+			compilationHandler(program, *clientSocket);
 			free(program);
+		}
 	}
 
 	sshutdown(*clientSocket, SHUT_WR);
@@ -93,18 +92,18 @@ void requestHandler(void* arg1) {
 }
 
 
-bool createEmptyProgram(Programm** program, char* progName) {
-	if ((*program = (Programm*)malloc(sizeof(Programm))) == NULL) {
+bool createEmptyProgram(Program** program, char* progName) {
+	if ((*program = (Program*)malloc(sizeof(Program))) == NULL) {
 		perror("Allocation dynamique de program impossible");
 		return false;
 	}
-	(*program)->programmeID = getFreeIdNumber();
-	strcpy((*program)->fichierSource, progName);
+	(*program)->programId = getFreeIdNumber();
+	strcpy((*program)->progName, progName);
 	(*program)->hasError = false;
-	(*program)->nombreExcecutions = 0;
-	(*program)->tempsExcecution = 0;
-	setProgram(*program, true);
+	(*program)->executionNumber = 0;
+	(*program)->executionTime = 0;
 
+	setProgram(*program, true);
 
 	return true;
 }
@@ -123,19 +122,19 @@ int getFreeIdNumber() {
 }
 
 //deep copy of struct Program
-void programCpy(Programm* dest, Programm* src) {
-	dest->programmeID = src->programmeID;
-	strcpy(dest->fichierSource, src->fichierSource);
+void programCpy(Program* dest, Program* src) {
+	dest->programId = src->programId;
+	strcpy(dest->progName, src->progName);
 	dest->hasError = src->hasError;
-	dest->nombreExcecutions = src->nombreExcecutions;
-	dest->tempsExcecution = src->tempsExcecution;
+	dest->executionNumber = src->executionNumber;
+	dest->executionTime = src->executionTime;
 }
 
 
-bool getProgram(Programm** program, int programId) {
+bool getProgram(Program** program, int programId) {
 	if (programId < 0) return false;
 
-	if ((*program = (Programm*)malloc(sizeof(Programm))) == NULL) {
+	if ((*program = (Program*)malloc(sizeof(Program))) == NULL) {
 		perror("Allocation dynamique de program impossible");
 		return false;
 	}
@@ -160,7 +159,7 @@ bool getProgram(Programm** program, int programId) {
 }
 
 
-void setProgram(Programm* program, bool isNew) {
+void setProgram(Program* program, bool isNew) {
 	int semID = sem_get(SEMA_KEY, NO_SEMAPHORE);
     int sharedMemID = sshmget(SHAREDMEM_KEY, SHAREDMEMSIZE, 0);
     sem_down0(semID);
@@ -168,7 +167,7 @@ void setProgram(Programm* program, bool isNew) {
     SharedMemoryContent* content = sshmat(sharedMemID);
     if (isNew) 
     	content->logicalSize++;
-    programCpy(&(content->programTab[program->programmeID]), program);
+    programCpy(&(content->programTab[program->programId]), program);
     
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
@@ -188,7 +187,7 @@ bool getProgramPath(int programId, char** path, char* extension) {
 
 //--- EXECUTION ---
 
-bool executionHandler(Programm* program, int programId, int clientSocket) {
+bool executionHandler(Program* program, int programId, int clientSocket) {
 	ExecuteResponse executeResponse = {programId, GOOD_EXECUTION, 0, 0};
 	char* stdout = NULL;
 
@@ -205,8 +204,8 @@ bool executionHandler(Programm* program, int programId, int clientSocket) {
 }
 
 
-bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse, char** stdout) {
-	if (strlen(program->fichierSource) == 0)
+bool prepareExecuteResponse(Program* program, ExecuteResponse* executeResponse, char** stdout) {
+	if (strlen(program->progName) == 0)
 		executeResponse->programState = NOT_EXIST;
 	else if (program->hasError)
 		executeResponse->programState = NOT_COMPILE;
@@ -231,8 +230,8 @@ bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse,
 		if (executeResponse->exitCode != 0)
 			executeResponse->programState = WRONG_EXECUTION;
 
-		program->nombreExcecutions++;
-		program->tempsExcecution += executeResponse->executionTime;
+		program->executionNumber++;
+		program->executionTime += executeResponse->executionTime;
 	}
 	return true;
 }
@@ -265,23 +264,22 @@ void sendExecuteResponse(ExecuteResponse* executeResponse, char** stdout, int cl
 
 //--- COMPILATION ---
 
-bool compilationHandler(Programm* program, int clientSocket) {
-	CompilationResponse compilationResponse = {program->programmeID, 0};
+void compilationHandler(Program* program, int clientSocket) {
+	CompilationResponse compilationResponse = {program->programId, 0};
 	char* errors = NULL;
 	prepareCompilationResponse(program, &compilationResponse, &errors, clientSocket);
 	setProgram(program, false);
 	sendCompilationResponse(&compilationResponse, &errors, clientSocket);
 
 	free(errors);
-	return true;
 }
 
 
-bool prepareCompilationResponse(Programm* program, CompilationResponse* compilationResponse, char** errors, int clientSocket) {
+bool prepareCompilationResponse(Program* program, CompilationResponse* compilationResponse, char** errors, int clientSocket) {
 	char* inputPath;
-	if (!getProgramPath(program->programmeID, &inputPath, "c")) return false;
+	if (!getProgramPath(program->programId, &inputPath, "c")) return false;
 	char* outputPath;
-	if (!getProgramPath(program->programmeID, &outputPath, "out")) return false;
+	if (!getProgramPath(program->programId, &outputPath, "out")) return false;
 	//write into program file source
 	int fd = sopen(inputPath, O_WRONLY | O_CREAT | O_TRUNC, 0744);
  	readThenWrite(clientSocket, fd);
