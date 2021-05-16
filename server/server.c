@@ -30,6 +30,8 @@ void requestHandler(void* arg1);
 bool createEmptyProgram(Programm** program, char* progName);
 int getFreeIdNumber();
 
+void programCpy(Programm* dest, Programm* src);
+
 bool getProgram(Programm** program, int programId);
 
 void setProgram(Programm* program, bool isNew);
@@ -119,6 +121,14 @@ int getFreeIdNumber() {
 	return sharedMemory->logicalSize;
 }
 
+//deep copy of struct Program
+void programCpy(Programm* dest, Programm* src) {
+	dest->programmeID 		= src->programmeID;
+	strcpy(dest->fichierSource, src->fichierSource);
+	dest->hasError 			= src->hasError;
+	dest->nombreExcecutions = src->nombreExcecutions;
+	dest->tempsExcecution 	= src->tempsExcecution;
+}
 
 bool getProgram(Programm** program, int programId) {
 	if (programId < 0) return false;
@@ -156,7 +166,7 @@ void setProgram(Programm* program, bool isNew) {
     if (isNew) 
     	content->logicalSize++;
 
-    content->programTab[program->programmeID] = program;
+    programCpy(content->programTab[program->programmeID], program);
 
   	sshmdt(sshmat(sharedMemID));
     sem_up0(semID);
