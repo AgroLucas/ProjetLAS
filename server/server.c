@@ -50,8 +50,8 @@ void sendCompilationResponse(CompilationResponse* compilationResponse, char** er
 void compileAndGetErrors(void* arg1, void* arg2, void* arg3);
 
 
-
 int main(int argc, char **argv) {
+	printf("%s\n", argv[0]);
 	//TODO check path
 	if (argc != 2) {
 		perror("Usage : ./server/server [port]\n");
@@ -75,7 +75,7 @@ void requestHandler(void* arg1) {
 
 	Request request;
 	sread(*clientSocket, &request, sizeof(Request));
-	Programm* program;
+	Programm* program = NULL;
 	if (request.firstInt == EXECUTION_VALUE) {
 		getProgram(&program, request.secondInt);
 		if (executionHandler(program, request.secondInt, *clientSocket))
@@ -88,6 +88,7 @@ void requestHandler(void* arg1) {
 			free(program);
 	}
 
+	sshutdown(*clientSocket, SHUT_WR);
 	sclose(*clientSocket);
 }
 
@@ -205,7 +206,7 @@ bool executionHandler(Programm* program, int programId, int clientSocket) {
 
 
 bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse, char** stdout) {
-	if (program == NULL)
+	if (strlen(program->fichierSource) == 0)
 		executeResponse->programState = NOT_EXIST;
 	else if (program->hasError)
 		executeResponse->programState = NOT_COMPILE;
@@ -240,7 +241,7 @@ bool prepareExecuteResponse(Programm* program, ExecuteResponse* executeResponse,
 long getCurrentMs() {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	return (tv.tv_sec * 1000) + tv.tv_usec;
+	return (tv.tv_sec * 1000000) + tv.tv_usec;
 }
 
 
